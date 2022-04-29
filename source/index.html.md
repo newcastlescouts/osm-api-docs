@@ -9,7 +9,8 @@ toc_footers:
   - <a href='https://github.com/newcastlescouts/osm-api-docs'>Available on GitHub</a>
 
 includes:
-  - members-personal-details
+  - members
+  - programme
 
 search: true
 

@@ -1,0 +1,31 @@
+name: Deploy
+
+on:
+  push:
+    branches: [ 'v3' ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      node-version: 12
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up node
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ env.node-version }}
+
+    - run: npx package-lock-audit ./package-lock.json
+    - run: npm i
+    - run: npm run build
+
+    - name: Deploy
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        destination_dir: v3
+        publish_dir: ./_site
+        keep_files: true
+

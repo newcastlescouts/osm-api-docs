@@ -352,6 +352,29 @@
                   </li>
               </ul>
           </li>
+          <li>
+            <a href="#programme" class="toc-h1 toc-link" data-title="Programme">Programme</a>
+              <ul class="toc-list-h2">
+                  <li>
+                    <a href="#get-programme-overview" class="toc-h2 toc-link" data-title="Get Programme Overview">Get Programme Overview</a>
+                  </li>
+                  <li>
+                    <a href="#get-badge-tag-cloud" class="toc-h2 toc-link" data-title="Get Badge Tag Cloud">Get Badge Tag Cloud</a>
+                  </li>
+                  <li>
+                    <a href="#show-programme-risk-assessment" class="toc-h2 toc-link" data-title="Show Programme Risk Assessment">Show Programme Risk Assessment</a>
+                  </li>
+                  <li>
+                    <a href="#get-badge-tag-cloud-2" class="toc-h2 toc-link" data-title="Get Badge Tag Cloud">Get Badge Tag Cloud</a>
+                  </li>
+                  <li>
+                    <a href="#get-meeting-details" class="toc-h2 toc-link" data-title="Get Meeting Details">Get Meeting Details</a>
+                  </li>
+                  <li>
+                    <a href="#view-meeting-attachments" class="toc-h2 toc-link" data-title="View Meeting Attachments">View Meeting Attachments</a>
+                  </li>
+              </ul>
+          </li>
       </ul>
         <ul class="toc-footer">
             <li><a href='https://onlinescoutmanager.co.uk'>Online Scout Manager</a></li>
@@ -763,7 +786,7 @@ Patrols with negative IDs are 'special patrols' - notably, -3: Young Leaders, -2
     </span><span class="nl">"meta"</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w">
 </span><span class="p">}</span><span class="w">
 </span></code></pre></div><h3 id='http-request-8'>HTTP Request</h3>
-<p><code>GET https://www.onlinescoutmanager.co.uk/v3/members/review/deletion/45998</code></p>
+<p><code>GET https://www.onlinescoutmanager.co.uk/v3/members/review/deletion/&lt;sectionid&gt;</code></p>
 <h3 id='query-parameters-8'>Query Parameters</h3>
 <table><thead>
 <tr>
@@ -778,6 +801,290 @@ Patrols with negative IDs are 'special patrols' - notably, -3: Young Leaders, -2
 <tr>
 <td>section_id</td>
 <td>Section ID</td>
+</tr>
+</tbody></table>
+<h1 id='programme'>Programme</h1>
+<p>This contains all API nodes accessed in the &#39;Programme&#39; category of OSM.</p>
+<h2 id='get-programme-overview'>Get Programme Overview</h2>
+<p>Get an overview of all meetings in a term, including the date, name and parent rota information.</p>
+
+<blockquote>
+<p>Example Response</p>
+</blockquote>
+<div class="highlight"><pre class="highlight json tab-json"><code><span class="p">{</span><span class="w">
+    </span><span class="nl">"items"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+        </span><span class="p">{</span><span class="w">
+            </span><span class="nl">"eveningid"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1111111"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"sectionid"</span><span class="p">:</span><span class="w"> </span><span class="s2">"12345"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"My Evening"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"notesforparents"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Beavers will return on the first Monday of the new school term."</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"notesforhelpingparents"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"parentsrequired"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"games"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Games Notes from OSM"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"prenotes"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Pre-Meeting Notes from OSM"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"postnotes"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Post-Meeting Notes from OSM"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"leaders"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Example will be unavailable </span><span class="se">\n</span><span class="s2">"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"meetingdate"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2022-04-01"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"starttime"</span><span class="p">:</span><span class="w"> </span><span class="s2">"18:00:00"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"endtime"</span><span class="p">:</span><span class="w"> </span><span class="s2">"19:00:00"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"config"</span><span class="p">:</span><span class="w"> </span><span class="s2">"{</span><span class="se">\"</span><span class="s2">parent_help_reminder_sent</span><span class="se">\"</span><span class="s2">:</span><span class="se">\"</span><span class="s2">2022-04-01</span><span class="se">\"</span><span class="s2">}"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"googlecalendar"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"soft_deleted"</span><span class="p">:</span><span class="w"> </span><span class="s2">"0"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"parentsattendingcount"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1"</span><span class="w">
+        </span><span class="p">}</span><span class="w">
+    </span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div><h3 id='http-request'>HTTP Request</h3>
+<p><code>GET https://www.onlinescoutmanager.co.uk/ext/programme/?action=getProgrammeSummary</code></p>
+<h3 id='query-parameters'>Query Parameters</h3>
+<table><thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td>sectionid</td>
+<td>The Section ID</td>
+</tr>
+<tr>
+<td>termid</td>
+<td>The Term ID</td>
+</tr>
+</tbody></table>
+<h2 id='get-badge-tag-cloud'>Get Badge Tag Cloud</h2>
+<p>Get an indication of which badges are covered in a term, with a weight per badge to show how many times it has been covered.</p>
+
+<blockquote>
+<p>Example Response</p>
+</blockquote>
+<div class="highlight"><pre class="highlight json tab-json"><code><span class="p">{</span><span class="w">
+    </span><span class="nl">"tags"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+        </span><span class="nl">"community"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">
+    </span><span class="p">},</span><span class="w">
+    </span><span class="nl">"tag_count"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"badges"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+        </span><span class="nl">"sites\/onlinescoutmanager.co.uk\/badge_images\/img_231870.png"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div><h3 id='http-request-2'>HTTP Request</h3>
+<p><code>GET https://www.onlinescoutmanager.co.uk/ext/programme/clouds/?action=getBadgeTagCloud</code></p>
+<h3 id='query-parameters-2'>Query Parameters</h3>
+<table><thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td>sectionid</td>
+<td>The Section ID</td>
+</tr>
+<tr>
+<td>termid</td>
+<td>The Term ID</td>
+</tr>
+<tr>
+<td>section</td>
+<td>The section type (<code>squirrels</code>, <code>beavers</code>, <code>cubs</code>, <code>scouts</code>, <code>explorers</code>)</td>
+</tr>
+</tbody></table>
+<h2 id='show-programme-risk-assessment'>Show Programme Risk Assessment</h2>
+<p>Show general programme risks added via OSM.</p>
+
+<blockquote>
+<p>Example Response</p>
+</blockquote>
+<div class="highlight"><pre class="highlight json tab-json"><code><span class="p">{</span><span class="w">
+    </span><span class="nl">"status"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"error"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"data"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+        </span><span class="p">{</span><span class="w">
+            </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Example Category"</span><span class="w">
+        </span><span class="p">},</span><span class="w">
+        </span><span class="p">{</span><span class="w">
+            </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"General Risks"</span><span class="w">
+        </span><span class="p">}</span><span class="w">
+    </span><span class="p">],</span><span class="w">
+    </span><span class="nl">"meta"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+        </span><span class="nl">"itemstore"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="nl">"identifier"</span><span class="p">:</span><span class="w"> </span><span class="s2">"name"</span><span class="w">
+        </span><span class="p">}</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div><h3 id='http-request-3'>HTTP Request</h3>
+<p><code>GET https://www.onlinescoutmanager.co.uk/v3/risk_assessments/&lt;section id&gt;/categories</code></p>
+<h3 id='query-parameters-3'>Query Parameters</h3>
+<p>N/A</p>
+<h2 id='get-badge-tag-cloud-2'>Get Badge Tag Cloud</h2>
+<p>Get an indication of which badges are covered in a term, with a weight per badge to show how many times it has been covered.</p>
+
+<blockquote>
+<p>Example Response</p>
+</blockquote>
+<div class="highlight"><pre class="highlight json tab-json"><code><span class="p">{</span><span class="w">
+    </span><span class="nl">"tags"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+        </span><span class="nl">"community"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">
+    </span><span class="p">},</span><span class="w">
+    </span><span class="nl">"tag_count"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">
+    </span><span class="nl">"badges"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+        </span><span class="nl">"sites\/onlinescoutmanager.co.uk\/badge_images\/img_231870.png"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div><h3 id='http-request-4'>HTTP Request</h3>
+<p><code>GET https://www.onlinescoutmanager.co.uk/ext/programme/clouds/?action=getBadgeTagCloud</code></p>
+<h3 id='query-parameters-4'>Query Parameters</h3>
+<table><thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td>sectionid</td>
+<td>The Section ID</td>
+</tr>
+<tr>
+<td>termid</td>
+<td>The Term ID</td>
+</tr>
+<tr>
+<td>section</td>
+<td>The section type (<code>squirrels</code>, <code>beavers</code>, <code>cubs</code>, <code>scouts</code>, <code>explorers</code>)</td>
+</tr>
+</tbody></table>
+<h2 id='get-meeting-details'>Get Meeting Details</h2>
+<p>Get details about a given meeting</p>
+
+<blockquote>
+<p>Example Response</p>
+</blockquote>
+<div class="highlight"><pre class="highlight json tab-json"><code><span class="p">{</span><span class="w">
+    </span><span class="nl">"items"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+        </span><span class="p">{</span><span class="w">
+            </span><span class="nl">"eveningid"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1111111"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"sectionid"</span><span class="p">:</span><span class="w"> </span><span class="s2">"12345"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"title"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Example Meeting"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"notesforparents"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Beavers will return on the first Monday of the new school term."</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"notesforhelpingparents"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"parentsrequired"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"games"</span><span class="p">:</span><span class="w"> </span><span class="s2">""</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"prenotes"</span><span class="p">:</span><span class="w"> </span><span class="s2">""</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"postnotes"</span><span class="p">:</span><span class="w"> </span><span class="s2">""</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"leaders"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Example will be unavailable </span><span class="se">\n</span><span class="s2">"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"meetingdate"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2022-04-01"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"starttime"</span><span class="p">:</span><span class="w"> </span><span class="s2">"18:00:00"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"endtime"</span><span class="p">:</span><span class="w"> </span><span class="s2">"19:00:00"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"config"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+                </span><span class="nl">"parent_help_reminder_sent"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2022-04-01"</span><span class="w">
+            </span><span class="p">},</span><span class="w">
+            </span><span class="nl">"googlecalendar"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"soft_deleted"</span><span class="p">:</span><span class="w"> </span><span class="s2">"0"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"help"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+                </span><span class="p">{</span><span class="w">
+                    </span><span class="nl">"scoutid"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2345678"</span><span class="p">,</span><span class="w">
+                    </span><span class="nl">"scout"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Example Child"</span><span class="p">,</span><span class="w">
+                    </span><span class="nl">"_nclScoutsNote"</span><span class="p">:</span><span class="w"> </span><span class="s2">"(This is a list of parent helpers)"</span><span class="w">
+                </span><span class="p">}</span><span class="w">
+            </span><span class="p">],</span><span class="w">
+            </span><span class="nl">"unavailableleaders"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+                </span><span class="p">{</span><span class="w">
+                    </span><span class="nl">"member_id"</span><span class="p">:</span><span class="w"> </span><span class="mi">1234567</span><span class="p">,</span><span class="w">
+                    </span><span class="nl">"firstname"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Example"</span><span class="p">,</span><span class="w">
+                    </span><span class="nl">"lastname"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Leader"</span><span class="w">
+                </span><span class="p">}</span><span class="w">
+            </span><span class="p">]</span><span class="w">
+        </span><span class="p">}</span><span class="w">
+    </span><span class="p">],</span><span class="w">
+    </span><span class="nl">"badgelinks"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+        </span><span class="nl">"6171007"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+            </span><span class="p">{</span><span class="w">
+                </span><span class="nl">"picture"</span><span class="p">:</span><span class="w"> </span><span class="s2">"sites</span><span class="se">\/</span><span class="s2">onlinescoutmanager.co.uk</span><span class="se">\/</span><span class="s2">badge_images</span><span class="se">\/</span><span class="s2">img_231881.png"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"link_relation_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"9677397"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"badge_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1525"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"badge_version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"0"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"column_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"114235"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"badge"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1525_0"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"badgeLongName"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Global Issues"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"badgetype"</span><span class="p">:</span><span class="w"> </span><span class="s2">"activity"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"badgetypeLongName"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Activity"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"columnname"</span><span class="p">:</span><span class="w"> </span><span class="s2">"114235"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"columnnameLongName"</span><span class="p">:</span><span class="w"> </span><span class="s2">"A: Endangered animals = Eco Evening"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"data"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Eco Evening"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"section"</span><span class="p">:</span><span class="w"> </span><span class="s2">"beavers"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"same_as"</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span><span class="w">
+                </span><span class="nl">"sectionLongName"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Beavers"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"label"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Activity: Global Issues - Endangered animals"</span><span class="w">
+            </span><span class="p">}</span><span class="w">
+        </span><span class="p">]</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div><h3 id='http-request-5'>HTTP Request</h3>
+<p><code>GET  https://www.onlinescoutmanager.co.uk/ext/programme/?action=getProgramme</code></p>
+<h3 id='query-parameters-5'>Query Parameters</h3>
+<table><thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td>sectionid</td>
+<td>The Section ID</td>
+</tr>
+<tr>
+<td>termid</td>
+<td>The Term ID</td>
+</tr>
+<tr>
+<td>eveningid</td>
+<td>The Meeting ID</td>
+</tr>
+</tbody></table>
+<h2 id='view-meeting-attachments'>View Meeting Attachments</h2>
+<p>Get an indication of which badges are covered in a term, with a weight per badge to show how many times it has been covered.</p>
+
+<blockquote>
+<p>Example Response</p>
+</blockquote>
+<div class="highlight"><pre class="highlight json tab-json"><code><span class="p">{</span><span class="w">
+    </span><span class="nl">"note"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+        </span><span class="s2">"This contains a configuration of what files the server will accept"</span><span class="p">,</span><span class="w">
+        </span><span class="s2">"We've never used this endpoint, so can't extensively document it."</span><span class="w">
+        </span><span class="p">]</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div><h3 id='http-request-6'>HTTP Request</h3>
+<p><code>GET https://www.onlinescoutmanager.co.uk/ext/programme/?action=programmeAttachmentsManifest</code></p>
+<h3 id='query-parameters-6'>Query Parameters</h3>
+<table><thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+</tr>
+</thead><tbody>
+<tr>
+<td>section_id</td>
+<td>The Section ID</td>
+</tr>
+<tr>
+<td>id</td>
+<td>The Meeting ID</td>
+</tr>
+<tr>
+<td>evening_id</td>
+<td>The Meeting ID (again)</td>
+</tr>
+<tr>
+<td>path</td>
+<td>Unknown (<code>/</code>)</td>
+</tr>
+<tr>
+<td>temp</td>
+<td>Unknown (<code>false</code>)</td>
+</tr>
+<tr>
+<td>upload_mode</td>
+<td>Unknown (<code>programme</code>)</td>
 </tr>
 </tbody></table>
 

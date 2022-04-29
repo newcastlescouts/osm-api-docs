@@ -329,7 +329,7 @@ Get a list of members who have been in your section, yet are no longer active in
 
 ### HTTP Request
 
-`GET https://www.onlinescoutmanager.co.uk/v3/members/review/deletion/45998`
+`GET https://www.onlinescoutmanager.co.uk/v3/members/review/deletion/<groupid>`
 
 ### Query Parameters
 

@@ -324,6 +324,14 @@
               </ul>
           </li>
           <li>
+            <a href="#general-requests" class="toc-h1 toc-link" data-title="General Requests">General Requests</a>
+              <ul class="toc-list-h2">
+                  <li>
+                    <a href="#get-general-data" class="toc-h2 toc-link" data-title="Get General Data">Get General Data</a>
+                  </li>
+              </ul>
+          </li>
+          <li>
             <a href="#members" class="toc-h1 toc-link" data-title="Members">Members</a>
               <ul class="toc-list-h2">
                   <li>
@@ -403,6 +411,172 @@
 <aside class="notice">
 It is strongly encouraged to enforce your own ratelimits on any application, rather than relying on OSM's applications - especially if unauthenticated users are able to manipulate data, e.g. by joining a waiting list.
 </aside>
+<h1 id='general-requests'>General Requests</h1>
+<p>API Requests which don&#39;t fit into another category</p>
+<h2 id='get-general-data'>Get General Data</h2>
+<p>Get an indication of which badges are covered in a term, with a weight per badge to show how many times it has been covered.</p>
+
+<aside class="notice">
+This API endpoint returns JavaScript code rather than a JSON response. By disregarding the first 18 characters, this can be fixed (e.g. in PHP <code>$data = substr($data, 18)</code> )
+</aside>
+
+<blockquote>
+<p>Example Response (a lot of this data has been ommitted as it is irrelevant to 99% of use cases)</p>
+</blockquote>
+<div class="highlight"><pre class="highlight json tab-json"><code><span class="err">var</span><span class="w"> </span><span class="err">data_holder</span><span class="w"> </span><span class="err">=</span><span class="w"> </span><span class="p">{</span><span class="w">
+    </span><span class="nl">"globals"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+        </span><span class="nl">"email"</span><span class="p">:</span><span class="w"> </span><span class="s2">"your.osm.email@newcastlescouts.org.uk"</span><span class="p">,</span><span class="w">
+        </span><span class="nl">"firstname"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Joe"</span><span class="p">,</span><span class="w">
+        </span><span class="nl">"fullname"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Joe Bloggs"</span><span class="p">,</span><span class="w">
+        </span><span class="nl">"hasSectionAccess"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+        </span><span class="nl">"lastname"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Bloggs"</span><span class="p">,</span><span class="w">
+        </span><span class="nl">"member_access"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="nl">"12345"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+                </span><span class="nl">"abbrv"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Cubs"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"access"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"config"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+                    </span><span class="nl">"at_home"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w">
+                    </span><span class="nl">"attachments"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w">
+                    </span><span class="nl">"badges"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+                    </span><span class="nl">"chat"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w">
+                    </span><span class="nl">"details"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+                    </span><span class="nl">"emailbolton"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+                    </span><span class="nl">"events"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+                    </span><span class="nl">"giftaid"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+                    </span><span class="nl">"payments"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+                    </span><span class="nl">"photos"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+                    </span><span class="nl">"programme"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+                </span><span class="p">},</span><span class="w">
+                </span><span class="nl">"group"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1st Newcastle (Example)"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"label"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Cubs"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"members"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+                    </span><span class="nl">"_nclscoutsapinote"</span><span class="p">:</span><span class="w"> </span><span class="s2">"This only iterates for you (and your own children)"</span><span class="p">,</span><span class="w">
+                    </span><span class="nl">"2211000"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+                        </span><span class="nl">"first_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Leader"</span><span class="p">,</span><span class="w">
+                        </span><span class="nl">"last_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Name"</span><span class="p">,</span><span class="w">
+                        </span><span class="nl">"photo_guid"</span><span class="p">:</span><span class="w"> </span><span class="s2">"00000000-0000-0000-0000-000000000000"</span><span class="p">,</span><span class="w">
+                        </span><span class="nl">"abbrv_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Joe"</span><span class="p">,</span><span class="w">
+                        </span><span class="nl">"chat_rooms"</span><span class="p">:</span><span class="w"> </span><span class="p">[],</span><span class="w">
+                        </span><span class="nl">"access_type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"member"</span><span class="p">,</span><span class="w">
+                        </span><span class="nl">"has_unread_chat_rooms"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w">
+                        </span><span class="nl">"abbrv"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Joe"</span><span class="p">,</span><span class="w">
+                        </span><span class="nl">"pane_abbrv"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Joe"</span><span class="p">,</span><span class="w">
+                        </span><span class="nl">"permissions"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+                        </span><span class="nl">"patrol"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Leaders"</span><span class="w">
+                    </span><span class="p">}</span><span class="w">
+                </span><span class="p">}</span><span class="w">
+            </span><span class="p">}</span><span class="w">
+        </span><span class="p">},</span><span class="w">
+        </span><span class="nl">"notepads"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="nl">"10000"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+                </span><span class="nl">"raw"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Example"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"html"</span><span class="p">:</span><span class="w"> </span><span class="s2">"&lt;p&gt;Example&lt;/p&gt;"</span><span class="w">
+            </span><span class="p">}</span><span class="w">
+        </span><span class="p">},</span><span class="w">
+        </span><span class="nl">"sectionConfig"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="nl">"subscription_level"</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"subscription_expires"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2022-01-01"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"section_type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cubs"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"sectionType"</span><span class="p">:</span><span class="w"> </span><span class="s2">"cubs"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"parentSectionId"</span><span class="p">:</span><span class="w"> </span><span class="s2">"0"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"subscription_lastExpires"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2021-01-01"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"subscription_active"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"portal"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+                </span><span class="nl">"events"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"programme"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"badges"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"details"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"emailbolton"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"eventRemindFrequency"</span><span class="p">:</span><span class="w"> </span><span class="s2">"-1"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"eventRemindCount"</span><span class="p">:</span><span class="w"> </span><span class="s2">"-1"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"programmeSummary"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"programmeTimes"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"programmeShow"</span><span class="p">:</span><span class="w"> </span><span class="s2">"0"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"programmeParentHelp"</span><span class="p">:</span><span class="w"> </span><span class="s2">"no"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"badgesPartial"</span><span class="p">:</span><span class="w"> </span><span class="s2">"0"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"showStore"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"personalDetailsHeader"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Personal Details Header"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"emailAddress"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1st Example Cubs &lt;cubs@examplescouts.org.uk&gt;"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"emailAddressCopy"</span><span class="p">:</span><span class="w"> </span><span class="s2">""</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"programmeDownloadButton"</span><span class="p">:</span><span class="w"> </span><span class="s2">"0"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"badgesEmail"</span><span class="p">:</span><span class="w"> </span><span class="s2">"0"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"charityName"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1st Newcastle (Example) Scout Group"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"easyfundraising"</span><span class="p">:</span><span class="w"> </span><span class="s2">"https://www.easyfundraising.org.uk/causes/49thns/"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"email_archive_disable"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"email_archive_dob"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"eventIcs"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"badgesShowRequirements"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"usedGiftAid"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2022-01-01"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"programmeIcs"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"programmeShowBadges"</span><span class="p">:</span><span class="w"> </span><span class="s2">"0"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"programmeAllowInformedAbsence"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"badgesHomework"</span><span class="p">:</span><span class="w"> </span><span class="s2">"badge"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"chat"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"accounts"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"payments"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"autoGiftAid"</span><span class="p">:</span><span class="w"> </span><span class="s2">"1"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"paymentRemindFrequency"</span><span class="p">:</span><span class="w"> </span><span class="s2">"5"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"paymentRemindCount"</span><span class="p">:</span><span class="w"> </span><span class="s2">"3"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"invitesRequired"</span><span class="p">:</span><span class="w"> </span><span class="kc">false</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"photos"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"showPatrol"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"disabledContacts"</span><span class="p">:</span><span class="w"> </span><span class="p">[]</span><span class="w">
+            </span><span class="p">},</span><span class="w">
+            </span><span class="nl">"portalExpires"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+                </span><span class="nl">"events"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2022-10-02"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"eventsA"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"programme"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2022-10-02"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"programmeA"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"badges"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2022-10-02"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"badgesA"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"details"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2022-10-02"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"detailsA"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"emailbolton"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2022-10-02"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"emailboltonA"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"chat"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2021-08-29"</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"chatA"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"accountsA"</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w">
+                </span><span class="nl">"accounts"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2023-03-22"</span><span class="w">
+            </span><span class="p">},</span><span class="w">
+            </span><span class="nl">"hasUsedBadgeRecords"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"extraRecords"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+                </span><span class="nl">"5"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+                    </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Example Record"</span><span class="p">,</span><span class="w">
+                    </span><span class="nl">"extraid"</span><span class="p">:</span><span class="w"> </span><span class="s2">"12345"</span><span class="w">
+                </span><span class="p">}</span><span class="w">
+            </span><span class="p">},</span><span class="w">
+            </span><span class="nl">"qmshare"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+                </span><span class="nl">"1"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="w">
+            </span><span class="p">},</span><span class="w">
+            </span><span class="nl">"subscription_cancelled"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2015-01-01"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"meeting_day"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Thu"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"config_subscriptions_checked"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2022-01-01"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"subscription_pred_lvl"</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"subscription_pred_exp"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2022-10-02"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"gocardless"</span><span class="p">:</span><span class="w"> </span><span class="s2">"true"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"discountcodes"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+                </span><span class="s2">"ExampleAPICode"</span><span class="w">
+            </span><span class="p">],</span><span class="w">
+            </span><span class="nl">"organisation_imported_section_id"</span><span class="p">:</span><span class="w"> </span><span class="s2">"10000000"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"hierarchy_lowest_level"</span><span class="p">:</span><span class="w"> </span><span class="s2">"level_1"</span><span class="p">,</span><span class="w">
+            </span><span class="nl">"hierarchy_operating_level"</span><span class="p">:</span><span class="w"> </span><span class="s2">"level_0"</span><span class="w">
+        </span><span class="p">},</span><span class="w">
+        </span><span class="nl">"terms"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w">
+            </span><span class="nl">"12345"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span><span class="w">
+                </span><span class="p">{</span><span class="w">
+                    </span><span class="nl">"enddate"</span><span class="p">:</span><span class="w"> </span><span class="s2">"2022-01-01"</span><span class="p">,</span><span class="w">
+                    </span><span class="nl">"master_term"</span><span class="p">:</span><span class="w"> </span><span class="kc">null</span><span class="p">,</span><span class="w">
+                    </span><span class="nl">"name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"Example Term"</span><span class="p">,</span><span class="w">
+                    </span><span class="nl">"past"</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span><span class="w">
+                    </span><span class="nl">"sectionid"</span><span class="p">:</span><span class="w"> </span><span class="s2">"12345"</span><span class="p">,</span><span class="w">
+                    </span><span class="nl">"termid"</span><span class="p">:</span><span class="w"> </span><span class="s2">"54321"</span><span class="w">
+                </span><span class="p">}</span><span class="w"> 
+            </span><span class="p">]</span><span class="w">
+        </span><span class="p">}</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+</span><span class="p">}</span><span class="w">
+</span></code></pre></div><h3 id='http-request'>HTTP Request</h3>
+<p><code>GET https://www.onlinescoutmanager.co.uk/ext/generic/startup/?action=getData</code></p>
 <h1 id='members'>Members</h1>
 <p>This contains all API nodes accessed in the &#39;Members&#39; category of OSM.</p>
 <h2 id='get-list-of-members'>Get List of Members</h2>

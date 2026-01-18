@@ -1,0 +1,851 @@
+openapi: 3.0.3
+info:
+  title: Online Scout Manager API (Unofficial)
+  version: 0.1.0
+  description: |
+    Unofficial OpenAPI definition derived from the OSM API docs in this repo.
+    This describes only endpoints observed by City of Newcastle Scouts.
+servers:
+  - url: https://www.onlinescoutmanager.co.uk
+  - url: https://onlinescoutmanager.co.uk
+paths:
+  /ext/generic/startup/:
+    get:
+      summary: Get general data
+      description: |
+        Returns general startup data. The API returns JavaScript, not JSON.
+        The payload is typically a `var data_holder = { ... }` assignment.
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [getData]
+          description: Must be `getData`.
+      responses:
+        "200":
+          description: JavaScript payload containing general data.
+          content:
+            application/javascript:
+              schema:
+                type: string
+              example: "var data_holder = {\"globals\":{\"email\":\"leader@example.org\",\"firstname\":\"Alex\",\"fullname\":\"Alex Scout\",\"hasSectionAccess\":true}}"
+  /ext/members/contact/:
+    get:
+      summary: Get list of members or individual member details
+      description: |
+        Retrieves member data. The `action` parameter controls the behavior.
+        This endpoint is also used to return full member contact/emergency data
+        (use with care for GDPR compliance).
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [getListOfMembers, getIndividual, getMemberTransfers]
+        - name: sectionid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Section ID.
+        - name: termid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Term ID.
+        - name: section
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [squirrels, beavers, cubs, scouts, explorers]
+          description: Section type.
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [dob, firstname, lastname, patrol]
+          description: Sort order for list of members.
+        - name: scoutid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Member unique identifier.
+        - name: context
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [members]
+          description: Context for member detail retrieval.
+        - name: mode
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Display mode (observed value `grid`).
+        - name: section_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Section ID (alternate naming).
+      responses:
+        "200":
+          description: Member data response.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/MembersList"
+                  - $ref: "#/components/schemas/MemberDetail"
+                  - $ref: "#/components/schemas/MemberTransfers"
+                additionalProperties: true
+              examples:
+                membersList:
+                  summary: Members list
+                  value:
+                    identifier: scoutid
+                    photos: true
+                    items:
+                      - firstname: Jamie
+                        lastname: River
+                        photo_guid: "00000000-0000-0000-0000-000000000000"
+                        patrolid: 12001
+                        patrol: Blue
+                        sectionid: 45001
+                        enddate: null
+                        age: "10 / 2"
+                        patrol_role_level_label: Sixer
+                        active: true
+                        scoutid: 3100001
+                        full_name: "Jamie River"
+                memberDetail:
+                  summary: Member detail
+                  value:
+                    ok: true
+                    read_only: []
+                    data:
+                      scoutid: "3100001"
+                      firstname: Jamie
+                      lastname: River
+                      dob: "2015-04-22"
+                      started: "2021-09-01"
+                      sectionid: 45001
+                      active: true
+                    meta: []
+                memberTransfers:
+                  summary: Member transfers
+                  value:
+                    status: true
+                    error: null
+                    data:
+                      - direction: from
+                        member_id: 3100002
+                        firstname: Riley
+                        lastname: Park
+                        photo_guid: "00000000-0000-0000-0000-000000000000"
+                        type: transferred
+                        date: "2024-01-15"
+                        section_id: 65001
+                        section_name:
+                          group: "Example Scout Group"
+                          section: Scouts
+                        section_long: "Example Scout Group: Scouts"
+                        mode: outgoing
+                        id: "outgoing-123456"
+                    meta: []
+  /ext/members/patrols/:
+    get:
+      summary: Get patrols with members
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [getPatrolsWithPeople]
+        - name: sectionid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Section ID.
+        - name: termid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Term ID.
+        - name: include_no_patrol
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [y, n]
+          description: Include pseudo-patrol for members not in a patrol.
+      responses:
+        "200":
+          description: Patrol list keyed by patrol ID.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+              example:
+                "-2":
+                  patrolid: "-2"
+                  sectionid: "-2"
+                  name: Leaders
+                  active: "1"
+                  points: "0"
+                  census_costs: false
+                  members: []
+                "12001":
+                  patrolid: "12001"
+                  sectionid: "45001"
+                  name: Blue
+                  active: "1"
+                  points: "2"
+                  census_costs: false
+                  members:
+                    - firstname: Jamie
+                      lastname: River
+                      scout_id: 3100001
+                      photo_guid: "00000000-0000-0000-0000-000000000000"
+                      patrolid: 12001
+                      patrolleader: "0"
+                      patrol: Blue
+                      sectionid: 45001
+                      enddate: null
+                      age: "10 / 2"
+                      patrol_role_level_label: Sixer
+                      active: 1
+                      scoutid: 3100001
+                      editable: true
+  /ext/members/census/:
+    get:
+      summary: Get census details
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [getDetails]
+        - name: sectionid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Section ID.
+        - name: termid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Term ID.
+      responses:
+        "200":
+          description: Census detail response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CensusDetails"
+              example:
+                identifier: scoutid
+                items:
+                  - scoutid: "3100003"
+                    firstname: Sam
+                    lastname: Lake
+                    joined: "2022-03-01"
+                    photo_guid: null
+                    sex: ""
+                    ethnicity: ""
+                    disabilities: "Edit disabilities"
+                    myscout: "Send Parent Portal email"
+                    raw_disabilities: []
+                    _filterString: "sam lake"
+  /ext/members/flexirecords/:
+    get:
+      summary: Get flexi-records
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [getPatrolsWithPeople]
+        - name: sectionid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Section ID.
+        - name: archived
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [y, n]
+          description: Toggle archived flexi-records.
+      responses:
+        "200":
+          description: Flexi-record list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FlexiRecords"
+              example:
+                identifier: extraid
+                label: name
+                items:
+                  - extraid: "23001"
+                    name: "Hike Log"
+  /v3/members/review/deletion/{sectionid}:
+    get:
+      summary: Get deletable members
+      parameters:
+        - name: sectionid
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Section ID.
+        - name: mode
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Display mode (observed value `grid`).
+        - name: section_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Section ID (alternate naming).
+      responses:
+        "200":
+          description: Deletable members response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletableMembers"
+              example:
+                status: true
+                error: null
+                data:
+                  - firstname: Pat
+                    lastname: Stone
+                    date_deleted: "2023-10-01"
+                    id: 3100004
+                meta: []
+  /ext/programme/:
+    get:
+      summary: Programme endpoints
+      description: |
+        Programme endpoints share this path with different `action` values.
+        Use `getProgrammeSummary` for term overview, `getProgramme` for details,
+        or `programmeAttachmentsManifest` for attachment metadata.
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [getProgrammeSummary, getProgramme, programmeAttachmentsManifest]
+        - name: sectionid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Section ID.
+        - name: termid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Term ID.
+        - name: eveningid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Meeting ID.
+        - name: section_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Section ID.
+        - name: id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Meeting ID.
+        - name: evening_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Meeting ID.
+        - name: path
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Unknown (observed `/`).
+        - name: temp
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Unknown (observed `false`).
+        - name: upload_mode
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Unknown (observed `programme`).
+      responses:
+        "200":
+          description: Programme response.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ProgrammeSummary"
+                  - $ref: "#/components/schemas/ProgrammeDetails"
+                additionalProperties: true
+              examples:
+                programmeSummary:
+                  summary: Programme summary
+                  value:
+                    items:
+                      - eveningid: "9500001"
+                        sectionid: "45001"
+                        title: "Camp Skills Night"
+                        notesforparents: "Bring a warm coat."
+                        parentsrequired: "1"
+                        meetingdate: "2024-11-01"
+                        starttime: "18:00:00"
+                        endtime: "19:30:00"
+                        soft_deleted: "0"
+                programmeDetails:
+                  summary: Programme details
+                  value:
+                    items:
+                      - eveningid: "9500001"
+                        sectionid: "45001"
+                        title: "Camp Skills Night"
+                        meetingdate: "2024-11-01"
+                        starttime: "18:00:00"
+                        endtime: "19:30:00"
+                        help:
+                          - scoutid: "3100005"
+                            scout: "Taylor Wood"
+                    badgelinks: {}
+  /ext/programme/clouds/:
+    get:
+      summary: Get badge tag cloud
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [getBadgeTagCloud]
+        - name: sectionid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Section ID.
+        - name: termid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Term ID.
+        - name: section
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [squirrels, beavers, cubs, scouts, explorers]
+          description: Section type.
+      responses:
+        "200":
+          description: Badge tag cloud response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BadgeTagCloud"
+              example:
+                tags:
+                  community: 1
+                tag_count: 1
+                badges:
+                  "sites/onlinescoutmanager.co.uk/badge_images/img_000000.png": 1
+  /ext/dashboard/:
+    get:
+      summary: Get next things dashboard data
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [getNextThings]
+        - name: sectionid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Section ID.
+        - name: termid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Term ID.
+        - name: section
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [squirrels, beavers, cubs, scouts, explorers]
+          description: Section type.
+      responses:
+        "200":
+          description: Dashboard next things response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardNextThings"
+              example:
+                conf:
+                  birthdays: 1
+                  programme: 1
+                  events: 1
+                is_full_admin: true
+                permissions:
+                  badge: 20
+                  member: 20
+                  user: "100"
+                patrols:
+                  - patrolid: "12001"
+                    sectionid: "45001"
+                    name: Blue
+                    active: "1"
+                    points: "0"
+                    census_costs: false
+                birthdays:
+                  - member_id: 3100006
+                    firstname: Casey
+                    lastname: Brook
+                    photo_guid: "00000000-0000-0000-0000-000000000000"
+                    dob: "2016-02-02"
+                    age: 9
+                programme:
+                  - meetingdate: "2024-11-01"
+                    title: "Camp Skills Night"
+                    eveningid: "9500001"
+                events:
+                  - eventid: "1700001"
+                    name: "District Camp"
+                    date: "2025-06-19"
+                    end_date: "2025-06-21"
+                    yes: 1
+                outstandingpayments:
+                  - name: "Subscriptions"
+                    amount: 45
+                    scheme_id: "47001"
+                    currency: "GBP"
+                surveys: false
+                notepad:
+                  raw: "0"
+                  html: "<p></p>"
+                subscription_expiring_soon: false
+                programme_reviews: []
+                deletable_members:
+                  count: 2
+                due_badges:
+                  count: 5
+                expense_cards:
+                  cardholders: []
+                  number_cardholders: 0
+                feature_request_voting:
+                  has_feature_request: false
+                pending_expense_cardholder_application:
+                  data_required: false
+                thanks:
+                  messages: []
+                unanswered_question:
+                  has_questions: false
+                user_to_do_tasks:
+                  tasks: []
+                  users: {}
+                whats_new:
+                  title: "Example Update"
+                  msg: "<p>Example message.</p>"
+                  story_id: 100
+                  like_count: 0
+                  user_has_liked: false
+  /v3/risk_assessments/{sectionId}/categories:
+    get:
+      summary: Show programme risk assessment categories
+      parameters:
+        - name: sectionId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Section ID.
+      responses:
+        "200":
+          description: Risk assessment categories response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskAssessmentCategories"
+              example:
+                status: true
+                error: null
+                data:
+                  - name: "General Risks"
+                meta:
+                  itemstore:
+                    identifier: name
+components:
+  schemas:
+    MembersList:
+      type: object
+      properties:
+        identifier:
+          type: string
+        photos:
+          type: boolean
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      required: [identifier, items]
+      additionalProperties: true
+    MemberDetail:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        read_only:
+          type: array
+          items:
+            type: string
+        data:
+          type: object
+          additionalProperties: true
+        meta:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      additionalProperties: true
+    MemberTransfers:
+      type: object
+      properties:
+        status:
+          type: boolean
+        error:
+          nullable: true
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        meta:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      additionalProperties: true
+    CensusDetails:
+      type: object
+      properties:
+        identifier:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      additionalProperties: true
+    FlexiRecords:
+      type: object
+      properties:
+        identifier:
+          type: string
+        label:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      additionalProperties: true
+    DeletableMembers:
+      type: object
+      properties:
+        status:
+          type: boolean
+        error:
+          nullable: true
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        meta:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      additionalProperties: true
+    ProgrammeSummary:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      additionalProperties: true
+    ProgrammeDetails:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        badgelinks:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+    BadgeTagCloud:
+      type: object
+      properties:
+        tags:
+          type: object
+          additionalProperties:
+            type: integer
+        tag_count:
+          type: integer
+        badges:
+          type: object
+          additionalProperties:
+            type: integer
+      additionalProperties: true
+    RiskAssessmentCategories:
+      type: object
+      properties:
+        status:
+          type: boolean
+        error:
+          nullable: true
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        meta:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+    DashboardNextThings:
+      type: object
+      properties:
+        conf:
+          type: object
+          additionalProperties:
+            type: integer
+        is_full_admin:
+          type: boolean
+        permissions:
+          type: object
+          additionalProperties: true
+        patrols:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        birthdays:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        programme:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        events:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        outstandingpayments:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        surveys:
+          oneOf:
+            - type: boolean
+            - type: object
+              additionalProperties: true
+        notepad:
+          type: object
+          additionalProperties: true
+        subscription_expiring_soon:
+          type: boolean
+        programme_reviews:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        deletable_members:
+          type: object
+          additionalProperties: true
+        due_badges:
+          type: object
+          additionalProperties: true
+        expense_cards:
+          type: object
+          additionalProperties: true
+        feature_request_voting:
+          type: object
+          additionalProperties: true
+        pending_expense_cardholder_application:
+          type: object
+          additionalProperties: true
+        thanks:
+          type: object
+          additionalProperties: true
+        unanswered_question:
+          type: object
+          additionalProperties: true
+        user_to_do_tasks:
+          type: object
+          additionalProperties: true
+        whats_new:
+          type: object
+          additionalProperties: true
+      additionalProperties: true

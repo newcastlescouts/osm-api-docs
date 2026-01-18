@@ -1,17 +1,40 @@
 openapi: 3.0.3
 info:
   title: Online Scout Manager API (Unofficial)
-  version: 0.1.0
+  version: 0.2.0
   description: |
     Unofficial OpenAPI definition derived from the OSM API docs in this repo.
     This describes only endpoints observed by City of Newcastle Scouts.
+    We highly recommend you read OSM's documentation on rate limits on APIs,
+    to avoid your account being locked out.
 servers:
   - url: https://www.onlinescoutmanager.co.uk
   - url: https://onlinescoutmanager.co.uk
+tags:
+  - name: Startup
+    description: Session bootstrap and general metadata.
+  - name: Members
+    description: Member lists, details, patrols, and census.
+  - name: Attendance
+    description: Member attendance and badge requirements.
+  - name: Custom Data
+    description: Custom data groups and updates.
+  - name: Email
+    description: Member contact email selection and templates.
+  - name: Programme
+    description: Programme summaries, meetings, and attachments.
+  - name: Badges
+    description: Badge-related programme metadata.
+  - name: Dashboard
+    description: Dashboard summaries and next things.
+  - name: Risk Assessments
+    description: Programme risk assessment categories.
 paths:
   /ext/generic/startup/:
     get:
       summary: Get general data
+      tags:
+        - Startup
       description: |
         Returns general startup data. The API returns JavaScript, not JSON.
         The payload is typically a `var data_holder = { ... }` assignment.
@@ -34,6 +57,8 @@ paths:
   /ext/members/contact/:
     get:
       summary: Get list of members or individual member details
+      tags:
+        - Members
       description: |
         Retrieves member data. The `action` parameter controls the behavior.
         This endpoint is also used to return full member contact/emergency data
@@ -161,9 +186,81 @@ paths:
                         mode: outgoing
                         id: "outgoing-123456"
                     meta: []
+  /ext/members/email/:
+    get:
+      summary: Get selected contact emails
+      tags:
+        - Email
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [getSelectedEmailsFromContacts]
+        - name: sectionid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Section ID.
+      responses:
+        "200":
+          description: Selected emails for contacts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SelectedContactEmails"
+              example:
+                emails:
+                  "2526072":
+                    emails:
+                      - "parent@example.org"
+                      - "guardian@example.org"
+                    firstname: "Jamie"
+                    lastname: "River"
+                    photo_guid: "00000000-0000-0000-0000-000000000000"
+                    member_id: 2526072
+                count: 2
+                blocks: []
+                daily_limit_reached: false
+    post:
+      summary: Send an email template
+      tags:
+        - Email
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [sendTemplate]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: true
+            example:
+              subject: "Example Email"
+              sectionid: "45998"
+              emails: "{\"2526072\":{\"firstname\":\"Jamie\",\"lastname\":\"River\",\"member_id\":2526072,\"emails\":[\"parent@example.org\"]}}"
+              edits: "{\"0\":{\"0\":{\"text\":\"<p>Example</p>\"}}}"
+      responses:
+        "200":
+          description: Email send response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+              example:
+                ok: true
   /ext/members/patrols/:
     get:
       summary: Get patrols with members
+      tags:
+        - Members
       parameters:
         - name: action
           in: query
@@ -232,6 +329,8 @@ paths:
   /ext/members/census/:
     get:
       summary: Get census details
+      tags:
+        - Members
       parameters:
         - name: action
           in: query
@@ -275,6 +374,8 @@ paths:
   /ext/members/flexirecords/:
     get:
       summary: Get flexi-records
+      tags:
+        - Members
       parameters:
         - name: action
           in: query
@@ -308,9 +409,285 @@ paths:
                 items:
                   - extraid: "23001"
                     name: "Hike Log"
+  /ext/members/attendance/:
+    get:
+      summary: Get attendance data or badge requirements
+      tags:
+        - Attendance
+      description: |
+        Attendance endpoints share this path with different `action` values.
+        Use `get` for attendance records or `getAttendanceBadgeRequirements`
+        for badge requirements tied to a date.
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [get, getAttendanceBadgeRequirements]
+        - name: sectionid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Section ID.
+        - name: termid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Term ID (required for `action=get`).
+        - name: section
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Section type (e.g., `cubs`).
+        - name: nototal
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Toggle total attendance column (observed `true`).
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Meeting date (required for `action=getAttendanceBadgeRequirements`).
+      responses:
+        "200":
+          description: Attendance or badge requirement response.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/AttendanceList"
+                  - $ref: "#/components/schemas/AttendanceBadgeRequirements"
+                additionalProperties: true
+              examples:
+                attendanceList:
+                  summary: Attendance list
+                  value:
+                    identifier: scoutid
+                    label: name
+                    items:
+                      - "2026-01-07": "Yes"
+                        total: 2
+                        firstname: "Ellie"
+                        lastname: "Barwick"
+                        patrolid: -2
+                        active: true
+                        scoutid: 2015779
+                    meetings:
+                      "2026-01-07": "Welcome Back!"
+                badgeRequirements:
+                  summary: Attendance badge requirements
+                  value:
+                    - badge_id: "1593"
+                      badgeName: "Communicator"
+                      column_id: "100542"
+                      name: "Code"
+                      meetingdate: "2026-01-14"
+                      section: "cubs"
+                      sectionid: 45998
+    post:
+      summary: Update attendance
+      tags:
+        - Attendance
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [update]
+        - name: sectionid
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: termid
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                scouts:
+                  type: string
+                  description: JSON array of member IDs.
+                selectedDate:
+                  type: string
+                present:
+                  type: string
+                section:
+                  type: string
+                sectionid:
+                  type: string
+                completedBadges:
+                  type: string
+                  description: JSON array of badge data.
+                customData:
+                  type: string
+                  description: JSON array of custom data updates.
+              required: [scouts, selectedDate, present, section, sectionid]
+              additionalProperties: true
+            example:
+              scouts: "[3008213]"
+              selectedDate: "2026-01-14"
+              present: "Absent"
+              section: "cubs"
+              sectionid: "45998"
+              completedBadges: "[]"
+              customData: "[]"
+      responses:
+        "200":
+          description: Attendance update response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+  /ext/customdata/:
+    get:
+      summary: Get custom data for a member
+      tags:
+        - Custom Data
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [getData]
+        - name: section_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Section ID.
+        - name: associated_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Member ID.
+        - name: associated_type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [member]
+        - name: associated_is_section
+          in: query
+          required: false
+          schema:
+            nullable: true
+            type: string
+          description: Section association flag (observed null).
+        - name: varname_filter
+          in: query
+          required: false
+          schema:
+            nullable: true
+            type: string
+          description: Filter by variable name (observed null).
+        - name: context
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [members]
+        - name: group_order
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Group ordering (observed "section").
+      responses:
+        "200":
+          description: Custom data groups and columns.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomDataResponse"
+              example:
+                status: true
+                error: null
+                data:
+                  - group_id: 7
+                    group_type: "floating"
+                    identifier: "floating"
+                    name: "Other"
+                    columns:
+                      - column_id: 34
+                        type: "select"
+                        varname: "gender"
+                        label: "Gender"
+                        value: "Male"
+                meta:
+                  group_name: "Example Scout Group"
+                  section_name: "Cubs"
+    post:
+      summary: Update custom data for a member
+      tags:
+        - Custom Data
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [update]
+        - name: section_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Section ID.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: true
+            example:
+              associated_id: "2211629"
+              associated_type: "member"
+              group_id: "2"
+              context: "members"
+              service: "desktop"
+              "data[firstname]": "Test"
+              "data[lastname]": "Contact 3"
+      responses:
+        "200":
+          description: Custom data update response.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomDataUpdateResponse"
+              example:
+                status: true
+                error: null
+                data:
+                  lastname: "Contact 3"
+                meta:
+                  last_updated:
+                    last_updated: "2026-01-18 18:24:25"
+                    last_updated_by_name: "Example User"
+                  updated:
+                    lastname: "Last Name"
   /v3/members/review/deletion/{sectionid}:
     get:
       summary: Get deletable members
+      tags:
+        - Members
       parameters:
         - name: sectionid
           in: path
@@ -349,17 +726,26 @@ paths:
   /ext/programme/:
     get:
       summary: Programme endpoints
+      tags:
+        - Programme
       description: |
         Programme endpoints share this path with different `action` values.
         Use `getProgrammeSummary` for term overview, `getProgramme` for details,
-        or `programmeAttachmentsManifest` for attachment metadata.
+        `getMembersForParentRota` for parent rota members, or
+        `programmeAttachmentsManifest` for attachment metadata.
       parameters:
         - name: action
           in: query
           required: true
           schema:
             type: string
-            enum: [getProgrammeSummary, getProgramme, programmeAttachmentsManifest]
+            enum:
+              [
+                getProgrammeSummary,
+                getProgramme,
+                programmeAttachmentsManifest,
+                getMembersForParentRota,
+              ]
         - name: sectionid
           in: query
           required: false
@@ -396,6 +782,12 @@ paths:
           schema:
             type: string
           description: Meeting ID.
+        - name: verbose
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Return verbose programme summary (observed `1`).
         - name: path
           in: query
           required: false
@@ -423,6 +815,7 @@ paths:
                 oneOf:
                   - $ref: "#/components/schemas/ProgrammeSummary"
                   - $ref: "#/components/schemas/ProgrammeDetails"
+                  - $ref: "#/components/schemas/ProgrammeParentRotaMembers"
                 additionalProperties: true
               examples:
                 programmeSummary:
@@ -452,9 +845,70 @@ paths:
                           - scoutid: "3100005"
                             scout: "Taylor Wood"
                     badgelinks: {}
+                programmeParentRotaMembers:
+                  summary: Parent rota members
+                  value:
+                    status: true
+                    error: null
+                    data:
+                      - scoutid: "2015779"
+                        firstname: "Ellie"
+                        lastname: "Barwick"
+                        photo_guid: "00000000-0000-0000-0000-000000000000"
+                        patrol_id: -2
+                    meta: []
+    post:
+      summary: Update programme meeting parts
+      tags:
+        - Programme
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [editEveningParts]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                sectionid:
+                  type: string
+                eveningid:
+                  type: string
+                parts:
+                  type: string
+                  description: JSON object of fields to update (e.g., title, notesforparents, primary_leader_id).
+              required: [sectionid, eveningid, parts]
+              additionalProperties: true
+            example:
+              sectionid: "45998"
+              eveningid: "9464403"
+              parts: "{\"title\":\"Astronomy Night 2\"}"
+      responses:
+        "200":
+          description: Updated programme meeting details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgrammeDetails"
+              example:
+                items:
+                  - eveningid: "9464403"
+                    sectionid: "45998"
+                    title: "Astronomy Night"
+                    meetingdate: "2026-01-21"
+                    starttime: "17:30:00"
+                    endtime: "18:45:00"
+                badgelinks: []
   /ext/programme/clouds/:
     get:
       summary: Get badge tag cloud
+      tags:
+        - Badges
       parameters:
         - name: action
           in: query
@@ -497,6 +951,8 @@ paths:
   /ext/dashboard/:
     get:
       summary: Get next things dashboard data
+      tags:
+        - Dashboard
       parameters:
         - name: action
           in: query
@@ -602,6 +1058,8 @@ paths:
   /v3/risk_assessments/{sectionId}/categories:
     get:
       summary: Show programme risk assessment categories
+      tags:
+        - Risk Assessments
       parameters:
         - name: sectionId
           in: path
@@ -676,6 +1134,203 @@ components:
             type: object
             additionalProperties: true
       additionalProperties: true
+    AttendanceList:
+      type: object
+      properties:
+        identifier:
+          type: string
+        label:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        meetings:
+          type: object
+          additionalProperties:
+            type: string
+      additionalProperties: true
+    AttendanceBadgeRequirements:
+      type: array
+      items:
+        $ref: "#/components/schemas/AttendanceBadgeRequirement"
+    AttendanceBadgeRequirement:
+      type: object
+      properties:
+        badge:
+          type: string
+        badge_id:
+          type: string
+        badge_version:
+          type: string
+        column_id:
+          type: string
+        badgeName:
+          type: string
+        badgetype:
+          type: string
+        columngroup:
+          type: string
+        columnname:
+          type: string
+        description:
+          type: string
+        data:
+          type: string
+        eveningid:
+          type: integer
+        meetingdate:
+          type: string
+        link_from:
+          type: string
+        name:
+          type: string
+        section:
+          type: string
+        sameas_counter:
+          type: integer
+        sectionid:
+          type: integer
+      additionalProperties: true
+    OkResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required: [ok]
+      additionalProperties: true
+    SelectedContactEmails:
+      type: object
+      properties:
+        emails:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              emails:
+                type: array
+                items:
+                  type: string
+              firstname:
+                type: string
+              lastname:
+                type: string
+              photo_guid:
+                type: string
+              member_id:
+                type: integer
+            additionalProperties: true
+        count:
+          type: integer
+        blocks:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        daily_limit_reached:
+          type: boolean
+      additionalProperties: true
+    CustomDataResponse:
+      type: object
+      properties:
+        status:
+          type: boolean
+        error:
+          nullable: true
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomDataGroup"
+        meta:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+    CustomDataGroup:
+      type: object
+      properties:
+        group_id:
+          type: integer
+        config:
+          nullable: true
+          type: object
+          additionalProperties: true
+        group_type:
+          type: string
+        identifier:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        description_mymember:
+          type: string
+        is_considered_core:
+          type: string
+        allow_new_columns:
+          type: string
+        display:
+          type: string
+        columns:
+          type: array
+          items:
+            $ref: "#/components/schemas/CustomDataColumn"
+        custom_order:
+          type: integer
+      additionalProperties: true
+    CustomDataColumn:
+      type: object
+      properties:
+        column_id:
+          type: integer
+        type:
+          type: string
+        required:
+          type: string
+        display_in_advanced_view:
+          type: string
+        display_if_empty:
+          type: string
+        hide_from_group_display:
+          type: string
+        config:
+          type: object
+          additionalProperties: true
+        varname:
+          type: string
+        label:
+          type: string
+        value:
+          nullable: true
+        is_core:
+          type: string
+        order:
+          type: string
+        force_read_only:
+          type: string
+        special_permissions:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+        orig_label:
+          type: string
+      additionalProperties: true
+    CustomDataUpdateResponse:
+      type: object
+      properties:
+        status:
+          type: boolean
+        error:
+          nullable: true
+        data:
+          type: object
+          additionalProperties: true
+        meta:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
     CensusDetails:
       type: object
       properties:
@@ -738,6 +1393,24 @@ components:
         badgelinks:
           type: object
           additionalProperties: true
+      additionalProperties: true
+    ProgrammeParentRotaMembers:
+      type: object
+      properties:
+        status:
+          type: boolean
+        error:
+          nullable: true
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        meta:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
       additionalProperties: true
     BadgeTagCloud:
       type: object

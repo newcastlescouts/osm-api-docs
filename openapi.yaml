@@ -474,8 +474,8 @@ paths:
                     items:
                       - "2026-01-07": "Yes"
                         total: 2
-                        firstname: "Ellie"
-                        lastname: "Barwick"
+                        firstname: "Robert"
+                        lastname: "Baden Powell"
                         patrolid: -2
                         active: true
                         scoutid: 2015779
@@ -852,8 +852,8 @@ paths:
                     error: null
                     data:
                       - scoutid: "2015779"
-                        firstname: "Ellie"
-                        lastname: "Barwick"
+                        firstname: "Robert"
+                        lastname: "Baden Powell"
                         photo_guid: "00000000-0000-0000-0000-000000000000"
                         patrol_id: -2
                     meta: []

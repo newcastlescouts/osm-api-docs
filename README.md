@@ -69,6 +69,19 @@ PRs are welcome — especially for endpoints not yet documented. If you've obser
 2. Include realistic but **fictional** example data (no real names, IDs, or section data)
 3. Note any quirks in the description (unusual response formats, required-but-undocumented params, etc.)
 
+### Validating the OpenAPI spec
+
+This repo uses [Redocly CLI](https://redocly.com/docs/cli/) to lint `openapi.yaml` and make sure it bundles cleanly.
+Config lives in `redocly.yaml`. To run it locally:
+
+```bash
+npx @redocly/cli@2.40.0 lint openapi.yaml
+npx @redocly/cli@2.40.0 bundle openapi.yaml > /dev/null
+```
+
+GitHub Actions runs the same two commands automatically on pull requests and pushes to `main` that touch
+`openapi.yaml` or `redocly.yaml` (see `.github/workflows/validate-openapi.yml`), so any issues will also be caught in CI.
+
 ## Licence
 
 This documentation is open source. The OSM API itself is owned by Online Scout Manager. This project is not endorsed by

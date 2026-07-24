@@ -15,7 +15,7 @@ leaders run their sections.
 
 ## What's covered
 
-The spec documents **19 endpoints** across 9 categories, with request/response examples and schemas:
+The spec documents endpoints across these categories, with request/response examples and schemas:
 
 | Category             | Endpoints                                                                                                                                                                               | What you can do                                                                                                                  |
 |----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
@@ -28,7 +28,7 @@ The spec documents **19 endpoints** across 9 categories, with request/response e
 | **Programme**        | `/ext/programme/`, `/ext/programme/clouds/`                                                                                                                                             | Meeting summaries, programme details, badge tag clouds                                                                           |
 | **Audit Trail**      | `/ext/audittrail/`                                                                                                                                                                      | Full change history for a member                                                                                                 |
 | **Dashboard**        | `/ext/dashboard/`                                                                                                                                                                       | Dashboard summaries, upcoming events, due badges                                                                                 |
-| **Risk Assessments** | `/v3/risk_assessments/.../categories`                                                                                                                                                   | Programme risk assessment categories                                                                                             |
+| **Risk Assessments** | `/ext/risk_assessments/`, `/v3/risk_assessments/.../categories`                                                                                                                         | Programme RA library (get/add items), category names                                                                             |
 
 ## Contents
 
@@ -57,6 +57,14 @@ You can also import `openapi.yaml` into tools like [Swagger Editor](https://edit
 
 - **Rate limits** — OSM enforces rate limits. Responses may include `X-RateLimit-*` or `RateLimit-*` headers. If you hit
   a `429`, back off immediately. Excessive requests will get your OAuth client banned.
+
+- **Invalid-request blocking** — OSM also blocks traffic that repeatedly hits unknown paths or invalid `action`
+  values (not only classic rate limits). Observed responses include an HTML “Blocked” page and JSON such as
+  `"code": "blocked"` / “too many invalid requests”. The block can affect **both** OAuth clients and the interactive
+  browser session for the same account, and the OAuth app UI may not show a blocked flag. **Do not probe** lists of
+  guessed endpoints. Capture one real request from DevTools, stop on the first blocked/invalid-action storm, and wait
+  before retrying. Continuing after a block can escalate. Account recovery may require a password reset (limited
+  frequency) followed by a waiting period before login.
 
 - **Privacy and GDPR** — These endpoints return personal data about young people and their families. Handle it
   responsibly. Don't store what you don't need, don't log PII, and follow your organisation's data protection policies.

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Online Scout Manager API (Unofficial)
-  version: 0.2.1
+  version: 0.3.0
   description: |
     Unofficial, community-driven OpenAPI specification for the
     [Online Scout Manager](https://www.onlinescoutmanager.co.uk) (OSM) API —
@@ -103,7 +103,17 @@ tags:
   - name: Dashboard
     description: Dashboard summaries and next things.
   - name: Risk Assessments
-    description: Programme risk assessment categories.
+    description: |
+      Programme risk assessment library and category names.
+
+      The shared Programme risk assessment uses `type=programme` with
+      `associated_id=0`. Meeting- or event-specific assessments may use other
+      `type` / `associated_id` values — capture those from browser DevTools when
+      saving against a meeting or event.
+
+      Older community docs sometimes list `/ext/events/risk-assessments/`; that
+      path has been observed to return HTTP 404. Prefer `/ext/risk_assessments/`
+      as captured from the current OSM UI.
 paths:
   /ext/generic/startup/:
     get:
@@ -3055,11 +3065,211 @@ paths:
                   story_id: 100
                   like_count: 0
                   user_has_liked: false
+  /ext/risk_assessments/:
+    get:
+      summary: Get a risk assessment
+      tags:
+        - Risk Assessments
+      description: |
+        Returns risk assessment items for a section.
+
+        Observed Programme library usage:
+        `action=getRiskAssessment`, `type=programme`, `associated_id=0`.
+
+        **Do not probe unknown `action` values.** OSM may temporarily block
+        accounts or OAuth clients that send many invalid requests. Prefer
+        capturing the real request from browser DevTools while using the UI.
+
+        Scopes typically required: `section:programme:read` (and
+        `section:event:read` when working with event-linked assessments).
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [getRiskAssessment]
+        - name: section_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Section ID.
+          example: "12345"
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [programme]
+          description: |
+            Assessment association type. `programme` is the shared Programme
+            risk assessment library. Other values may exist for meetings/events
+            — capture from DevTools before relying on them.
+        - name: associated_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: |
+            Related object ID. Use `0` for the shared Programme library
+            (`type=programme`).
+          example: "0"
+      responses:
+        "200":
+          description: Risk assessment payload.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskAssessment"
+              example:
+                status: true
+                error: null
+                data:
+                  items:
+                    - id: 1001
+                      hazard: "Uneven ground"
+                      category: "Outdoors"
+                      who: "Young people and adult volunteers"
+                      controls: "Brief the group and use paths where possible."
+                      check: "Review after wet weather."
+                meta: []
+        "403":
+          description: Invalid action or insufficient permissions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskAssessmentBlocked"
+              example:
+                status: false
+                error:
+                  message: "Invalid action specified"
+                  code: "invalid-action"
+                data: []
+                meta: []
+    post:
+      summary: Add or update a risk assessment item
+      tags:
+        - Risk Assessments
+      description: |
+        Creates a risk assessment item (or updates when `id` refers to an
+        existing item). Body must be `application/x-www-form-urlencoded`,
+        **not** JSON.
+
+        Observed Programme library create:
+        query `action=addItem` with body fields `section_id`, `id=0`,
+        `associated_id=0`, `type=programme`, plus `hazard`, `category`, `who`,
+        `controls`, and `check` (maps to the UI “Review” field).
+
+        Space write requests (for example 300–500ms apart). Stop immediately if
+        responses indicate blocking (`code: blocked`, HTML “Blocked” page, or
+        `X-Blocked`). Continuing after a block can escalate to a longer or
+        permanent block.
+
+        Scopes typically required: `section:programme:write`.
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [addItem]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required:
+                - section_id
+                - id
+                - associated_id
+                - type
+                - hazard
+                - controls
+              properties:
+                section_id:
+                  type: string
+                  description: Section ID.
+                  example: "12345"
+                id:
+                  type: string
+                  description: `0` to create a new item; existing item ID to update.
+                  example: "0"
+                associated_id:
+                  type: string
+                  description: Related object ID. `0` for shared Programme library.
+                  example: "0"
+                type:
+                  type: string
+                  enum: [programme]
+                  description: Assessment association type.
+                hazard:
+                  type: string
+                  description: Hazard and risk (UI label “Hazard & Risk”).
+                  example: "Uneven ground"
+                category:
+                  type: string
+                  description: Free-text grouping used to organise risks.
+                  example: "Outdoors"
+                who:
+                  type: string
+                  description: Who is at risk.
+                  example: "Young people and adult volunteers"
+                controls:
+                  type: string
+                  description: How risks are controlled.
+                  example: "Brief the group and use paths where possible."
+                check:
+                  type: string
+                  description: Review notes (UI label “Review”).
+                  example: "Review after wet weather."
+            example:
+              section_id: "12345"
+              id: "0"
+              associated_id: "0"
+              type: programme
+              hazard: "Uneven ground"
+              category: "Outdoors"
+              who: "Young people and adult volunteers"
+              controls: "Brief the group and use paths where possible."
+              check: "Review after wet weather."
+      responses:
+        "200":
+          description: Item created or updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskAssessmentWriteResult"
+              example:
+                status: true
+                error: null
+                data: {}
+                meta: []
+        "403":
+          description: Blocked or invalid request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskAssessmentBlocked"
+              example:
+                status: false
+                error:
+                  message: "You have sent too many invalid requests - please try later."
+                  code: "blocked"
+                data: []
+                meta: []
   /v3/risk_assessments/{sectionId}/categories:
     get:
       summary: Show programme risk assessment categories
       tags:
         - Risk Assessments
+      description: |
+        Returns category names already used for grouping risk assessment items.
+
+        This route supports **GET/HEAD only**. Creating a new category is done
+        implicitly by posting an item with a new `category` string via
+        `/ext/risk_assessments/?action=addItem`.
       parameters:
         - name: sectionId
           in: path
@@ -3067,6 +3277,7 @@ paths:
           schema:
             type: string
           description: Section ID.
+          example: "12345"
       responses:
         "200":
           description: Risk assessment categories response.
@@ -3079,6 +3290,7 @@ paths:
                 error: null
                 data:
                   - name: "General Risks"
+                  - name: "Outdoors"
                 meta:
                   itemstore:
                     identifier: name
@@ -3100,7 +3312,9 @@ components:
             section:member:write: Update member data (patrols, ranks, fields)
             section:badge:read: Read badge records and progress
             section:event:read: Read events and programme data
-            section:programme:read: Read programme summaries and meetings
+            section:event:write: Create and update events
+            section:programme:read: Read programme summaries, meetings, and risk assessments
+            section:programme:write: Update programme meetings and risk assessment items
   schemas:
     StartupConfigPayload:
       type: object
@@ -3873,6 +4087,59 @@ components:
         meta:
           type: object
           additionalProperties: true
+      additionalProperties: true
+    RiskAssessment:
+      type: object
+      description: |
+        Shape varies by OSM version. Treat unknown fields as opaque. Item fields
+        commonly include `hazard`, `category`, `who`, `controls`, and `check`.
+      properties:
+        status:
+          type: boolean
+        error:
+          nullable: true
+        data:
+          type: object
+          additionalProperties: true
+        meta:
+          oneOf:
+            - type: array
+            - type: object
+              additionalProperties: true
+      additionalProperties: true
+    RiskAssessmentWriteResult:
+      type: object
+      properties:
+        status:
+          type: boolean
+        error:
+          nullable: true
+        data:
+          additionalProperties: true
+        meta:
+          oneOf:
+            - type: array
+            - type: object
+              additionalProperties: true
+      additionalProperties: true
+    RiskAssessmentBlocked:
+      type: object
+      description: |
+        Returned when an action is invalid or OSM has temporarily blocked further
+        API use after too many invalid requests.
+      properties:
+        status:
+          type: boolean
+        error:
+          type: object
+          properties:
+            message:
+              type: string
+            code:
+              type: string
+              example: blocked
+        data: {}
+        meta: {}
       additionalProperties: true
     DashboardNextThings:
       type: object

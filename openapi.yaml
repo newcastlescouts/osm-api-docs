@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Online Scout Manager API (Unofficial)
-  version: 0.2.1
+  version: 0.3.0
   description: |
     Unofficial, community-driven OpenAPI specification for the
     [Online Scout Manager](https://www.onlinescoutmanager.co.uk) (OSM) API —
@@ -103,7 +103,34 @@ tags:
   - name: Dashboard
     description: Dashboard summaries and next things.
   - name: Risk Assessments
-    description: Programme risk assessment categories.
+    description: Programme and meeting risk assessments.
+  - name: Events
+    description: Events, event attendance and payments, Parent Portal settings, and kit lists.
+  - name: Finance
+    description: |
+      Accounting (cashbook, bank accounts, budgets, reports), expense cards,
+      and invoices.
+
+      **Units:** the `/v3/finances/accounting/` endpoints use **integer pence**
+      (`9706` = £97.06). Event endpoints (`/v3/events/…`, `/ext/events/…`)
+      use **pounds**.
+  - name: Files
+    description: |
+      Several features share a common file-attachment API. Each exposes a
+      `manifest` action (sometimes namespaced, e.g. `emailerAttachmentsManifest`
+      or `programmeAttachmentsManifest`) on its own URL, taking `id`, `path`
+      (usually `/`), `section_id`, `temp`, plus a feature-specific ID.
+
+      The response's `data.config.endpoints` tells you the `action` names to
+      use on the same URL for each file operation (`put`, `get`, `preview`,
+      `rename`, `delete`, `putTemp`/`commitTemp`/`revertTemp` for staged
+      uploads, `partPut` for chunked uploads); an operation is `false` where
+      it is not allowed. `config` also gives allowed extensions/MIME types and
+      size limits, and `meta.size` the remaining quota.
+  - name: Generic
+    description: Cross-cutting helpers (edit locks, telemetry).
+  - name: User
+    description: Session keep-alive and per-user preferences.
 paths:
   /ext/generic/startup/:
     get:
@@ -1325,6 +1352,7 @@ paths:
                         active: true
                         scoutid: 3100001
                         full_name: "Jamie River"
+                        has_invitations: false
                 memberDetail:
                   summary: Member detail
                   value:
@@ -1334,10 +1362,22 @@ paths:
                       scoutid: "3100001"
                       firstname: Jamie
                       lastname: River
+                      photo_guid: "00000000-0000-0000-0000-000000000000"
                       dob: "2015-04-22"
                       started: "2021-09-01"
+                      created_date: "2021-09-01 18:30:00"
+                      last_accessed: "2025-09-15 19:00:00"
+                      patrolid: "12001"
+                      patrolleader: "2"
+                      startedsection: "2021-09-01"
+                      enddate: null
+                      age: "10 years and 4 months"
+                      age_simple: "10 / 04"
                       sectionid: 45001
                       active: true
+                      has_invitations: false
+                      moving_on_date: "2025-12-19"
+                      moving_on_section_name: "Scouts"
                     meta: [ ]
                 memberTransfers:
                   summary: Member transfers
@@ -1370,7 +1410,8 @@ paths:
         `update`. The body is sent as `application/x-www-form-urlencoded`.
 
         **Member field mode** — send `scoutid`, `column`, `value`, `sectionid`,
-        `context=members`. Known columns:
+        and optionally `context=members` (the web UI's patrol drag-and-drop
+        omits `context` and still succeeds). Known columns:
 
         | Column          | Value format | Notes |
         |-----------------|-------------|-------|
@@ -1465,9 +1506,9 @@ paths:
                   associated_id: "3100001"
                   group_id: "1"
                   context: members
-                  "data[firstname]": "Sarah"
+                  "data[firstname]": "Morwenna"
                   "data[lastname]": "River"
-                  "data[email1]": "sarah.river@example.org"
+                  "data[email1]": "morwenna.river@example.org"
                   "data[phone1]": "07700900123"
                   "data[phone1_sms]": "yes"
       responses:
@@ -1594,7 +1635,7 @@ paths:
               newMember:
                 summary: Create a new member
                 value:
-                  firstname: Robin
+                  firstname: Rowan
                   lastname: Wells
                   dob: "2016-06-15"
                   startedsection: "2025-09-05"
@@ -1653,7 +1694,7 @@ paths:
                     result: ok
                     out_of_term: false
                     scoutid: 3100005
-                    firstname: Robin
+                    firstname: Rowan
                     lastname: Wells
                 removeMember:
                   summary: Member removed
@@ -1674,13 +1715,20 @@ paths:
         Returns badge data. The `action` parameter controls the behavior:
         - `getBadgeRecords` — returns per-member completion records for a specific badge.
         - `getAvailableBadges` — returns the list of badges available for a section and type.
+          When called with `asNumericArray=y&liveOnly=y&addGroupToName=y` (as the
+          attendance register does), the response is a Dojo item store
+          (`identifier` / `label` / `items`) containing every live badge for the
+          section across all types, and `type_id` / `term_id` are not needed.
+          Either `sectionid` or `section_id` is accepted.
+        - `getColumnsForBadge` — returns the requirement columns (the individual
+          criteria, grouped into lettered modules) for one badge version.
       parameters:
         - name: action
           in: query
           required: true
           schema:
             type: string
-            enum: [ getBadgeRecords, getAvailableBadges ]
+            enum: [ getBadgeRecords, getAvailableBadges, getColumnsForBadge ]
         - name: section
           in: query
           required: true
@@ -1690,7 +1738,7 @@ paths:
           description: Section type.
         - name: section_id
           in: query
-          required: true
+          required: false
           schema:
             type: string
           description: Section ID (used with `getAvailableBadges`).
@@ -1702,31 +1750,67 @@ paths:
           description: Section ID (alternate naming, used with some actions).
         - name: term_id
           in: query
-          required: true
+          required: false
           schema:
             type: string
-          description: Term ID.
+          description: Term ID (not sent by the item-store form of `getAvailableBadges`).
         - name: type_id
           in: query
-          required: true
+          required: false
           schema:
             type: string
             enum: [ "1", "2", "3", "4" ]
           description: |
             Badge type ID.
             1 = Challenge, 2 = Activity, 3 = Staged, 4 = Core.
+            Not sent by the item-store form of `getAvailableBadges`.
+        - name: asNumericArray
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ y ]
+          description: "`getAvailableBadges` — return `items` as a flat array."
+        - name: liveOnly
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ y ]
+          description: "`getAvailableBadges` — only include current (live) badge versions."
+        - name: addGroupToName
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ y ]
+          description: "`getAvailableBadges` — prefix `name` with the badge group where one is set."
+        - name: noHidden
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ y ]
+          description: "`getColumnsForBadge` — exclude hidden columns."
+        - name: editable
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ y ]
+          description: "`getColumnsForBadge` — only include columns that can be edited."
         - name: badge_id
           in: query
           required: false
           schema:
             type: string
-          description: Badge ID (required for `getBadgeRecords`).
+          description: Badge ID (required for `getBadgeRecords` and `getColumnsForBadge`).
         - name: badge_version
           in: query
           required: false
           schema:
             type: string
-          description: Badge version (required for `getBadgeRecords`).
+          description: Badge version (required for `getBadgeRecords` and `getColumnsForBadge`).
         - name: payload
           in: query
           required: false
@@ -1753,8 +1837,53 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/BadgeRecordsResponse"
+                oneOf:
+                  - $ref: "#/components/schemas/BadgeRecordsResponse"
+                  - $ref: "#/components/schemas/ItemStore"
               examples:
+                availableBadgesItemStore:
+                  summary: Available badges (asNumericArray=y&liveOnly=y&addGroupToName=y)
+                  value:
+                    identifier: badge_identifier
+                    label: name
+                    items:
+                      - badge_id: "1001"
+                        badge_version: "0"
+                        shortname: "1001"
+                        badge_identifier: "1001_0"
+                        name: "Teamwork"
+                        picture: "sites/onlinescoutmanager.co.uk/badge_images/img_000000.png"
+                        description: "Work as part of a team on a range of activities."
+                        parents_description: ""
+                        config: "{\"requires\":[[\"a\"],[\"b\"]]}"
+                        portal_config: "{\"always_show_in_list\":false}"
+                        userid: "1"
+                        sharing: "default-locked"
+                        latest: "0"
+                        badge_order: "0"
+                        group_name: ""
+                        created_at: "2015-01-27 10:00:00"
+                        lastupdated: "2025-01-01 10:00:00"
+                        type_id: "1"
+                        badge_id_version: "1001_0"
+                columnsForBadge:
+                  summary: Requirement columns for a badge (action=getColumnsForBadge)
+                  value:
+                    identifier: column_id
+                    label: label
+                    items:
+                      - label: "Team game"
+                        description: "Take part in a team game."
+                        column_id: "200001"
+                        field_type: "text"
+                        points: "0"
+                        module_id: "3001"
+                        module_letter: "a"
+                        custom_columns: "0"
+                        section_id: "0"
+                        sameas_column_id: "0"
+                        same_as: [ ]
+                        custom: false
                 availableBadges:
                   summary: Available badges list
                   value:
@@ -1842,53 +1971,125 @@ paths:
                 meta: [ ]
   /ext/members/email/:
     get:
-      summary: Get selected contact emails
+      summary: Get selected contact emails, or the email attachments manifest
       tags:
         - Email
+      description: |
+        - `getSelectedEmailsFromContacts` — resolves the email addresses for every
+          member in the section using their default contact groups. The web UI
+          now sends this as a **POST** with an explicit member list (see below);
+          the GET form is kept here as previously observed.
+        - `emailerAttachmentsManifest` — returns the attachment manifest for an
+          email being composed. The `guid` / `id` identify the draft (the same
+          GUID later sent to `sendTemplate` and `/v3/members/email/draft`). See
+          [File manifests](#tag/Files) for the response shape.
       parameters:
         - name: action
           in: query
           required: true
           schema:
             type: string
-            enum: [ getSelectedEmailsFromContacts ]
+            enum: [ getSelectedEmailsFromContacts, emailerAttachmentsManifest ]
         - name: sectionid
           in: query
-          required: true
+          required: false
           schema:
             type: string
-          description: Section ID.
+          description: Section ID (`getSelectedEmailsFromContacts`).
+        - name: section_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Section ID (`emailerAttachmentsManifest`).
+        - name: id
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Draft email GUID (`emailerAttachmentsManifest`).
+        - name: guid
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+          description: Draft email GUID — same value as `id` (`emailerAttachmentsManifest`).
+        - name: path
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Directory within the manifest (observed `/`).
+        - name: temp
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ "true", "false" ]
+          description: Include uncommitted (temporary) uploads.
       responses:
         "200":
-          description: Selected emails for contacts.
+          description: Selected emails for contacts, or a file manifest.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/SelectedContactEmails"
+                oneOf:
+                  - $ref: "#/components/schemas/SelectedContactEmails"
+                  - $ref: "#/components/schemas/FileManifestResponse"
               example:
                 emails:
-                  "2526072":
+                  "3100001":
                     emails:
                       - "parent@example.org"
                       - "guardian@example.org"
                     firstname: "Jamie"
                     lastname: "River"
                     photo_guid: "00000000-0000-0000-0000-000000000000"
-                    member_id: 2526072
+                    member_id: 3100001
                 count: 2
                 blocks: [ ]
                 daily_limit_reached: false
     post:
-      summary: Send an email template
+      summary: Resolve recipient emails or send an email
       tags:
         - Email
+      description: |
+        Two `action` values share this POST endpoint:
+
+        **`getSelectedEmailsFromContacts`** (`sectionid` in the query string) —
+        resolves the addresses for a chosen set of members and contact groups.
+        Body fields:
+
+        | Field | Format | Notes |
+        |-------|--------|-------|
+        | `scouts` | comma-separated member IDs | e.g. `3100001,3100002` |
+        | `contactGroups` | JSON array of contact group identifiers | e.g. `["contact_primary_1","contact_primary_2","contact_primary_member"]` |
+
+        The response is the same shape as the GET form (keyed by member ID).
+        `count` is the number of addresses, not members.
+
+        **`sendTemplate`** — sends (or schedules) an email. `emails` is the JSON
+        object returned by `getSelectedEmailsFromContacts` (optionally with an
+        `order` per member); `edits` is a JSON object of template regions
+        `{ regionId: { blockIndex: { "text": "<html>" } } }`. For a plain email
+        the region ID is `"0"`; when a campaign template is used, the region IDs
+        are the campaign's `snippet_id`s (see
+        `/v3/members/email/campaigns/snippets/{campaignId}`).
       parameters:
         - name: action
           in: query
           required: true
           schema:
             type: string
-            enum: [ sendTemplate ]
+            enum: [ getSelectedEmailsFromContacts, sendTemplate ]
+        - name: sectionid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Section ID (required for `getSelectedEmailsFromContacts`).
       requestBody:
         required: true
         content:
@@ -1896,20 +2097,90 @@ paths:
             schema:
               type: object
               additionalProperties: true
-            example:
-              subject: "Weekly Meeting Reminder"
-              sectionid: "45001"
-              emails: "{\"2526072\":{\"firstname\":\"Jamie\",\"lastname\":\"River\",\"member_id\":2526072,\"emails\":[\"parent@example.org\"]}}"
-              edits: "{\"0\":{\"0\":{\"text\":\"<p>Don't forget to bring your swimming kit this week!</p>\"}}}"
+              properties:
+                scouts:
+                  type: string
+                  description: "`getSelectedEmailsFromContacts` — comma-separated member IDs."
+                contactGroups:
+                  type: string
+                  description: "`getSelectedEmailsFromContacts` — JSON array of contact group identifiers."
+                subject:
+                  type: string
+                  description: "`sendTemplate` — email subject."
+                from:
+                  type: string
+                  description: "`sendTemplate` — sender, formatted `Display Name <address>`."
+                cc:
+                  type: string
+                  description: "`sendTemplate` — CC addresses (may be empty)."
+                save_email_from:
+                  type: string
+                  enum: [ "true", "false" ]
+                  description: "`sendTemplate` — remember `from` as the default sender."
+                emails:
+                  type: string
+                  description: "`sendTemplate` — JSON object of recipients keyed by member ID."
+                edits:
+                  type: string
+                  description: "`sendTemplate` — JSON object of template region content."
+                sectionid:
+                  type: string
+                  description: "`sendTemplate` — section ID."
+                current_section_id:
+                  type: string
+                  description: "`sendTemplate` — section the user is currently viewing."
+                campaign_id:
+                  type: string
+                  description: "`sendTemplate` — campaign template ID, or `0` for a plain email."
+                email_session_key:
+                  type: string
+                  description: "`sendTemplate` — observed `blank`."
+                guid:
+                  type: string
+                  format: uuid
+                  description: "`sendTemplate` — draft GUID (ties attachments to the email)."
+                draft_email_id:
+                  type: string
+                  description: "`sendTemplate` — ID returned by `POST /v3/members/email/draft`."
+                scheduled_email_id:
+                  type: string
+                  description: "`sendTemplate` — scheduled email being sent, or `0`."
+            examples:
+              getSelectedEmailsFromContacts:
+                summary: Resolve recipient emails (action=getSelectedEmailsFromContacts)
+                value:
+                  scouts: "3100001,3100002"
+                  contactGroups: "[\"contact_primary_1\",\"contact_primary_2\",\"contact_primary_member\"]"
+              sendTemplate:
+                summary: Send an email (action=sendTemplate)
+                value:
+                  cc: ""
+                  from: "1st Riverside Cubs <cubs@example.org>"
+                  save_email_from: "false"
+                  subject: "Weekly Meeting Reminder"
+                  emails: "{\"3100001\":{\"firstname\":\"Jamie\",\"lastname\":\"River\",\"member_id\":3100001,\"order\":0,\"photo_guid\":\"00000000-0000-0000-0000-000000000000\",\"emails\":[\"parent@example.org\"]}}"
+                  edits: "{\"0\":{\"0\":{\"text\":\"<p>Don't forget to bring your swimming kit this week!</p>\"}}}"
+                  sectionid: "45002"
+                  current_section_id: "45002"
+                  campaign_id: "0"
+                  email_session_key: "blank"
+                  guid: "00000000-0000-0000-0000-000000000001"
+                  draft_email_id: "80000001"
+                  scheduled_email_id: "0"
       responses:
         "200":
-          description: Email send response.
+          description: Selected emails (`getSelectedEmailsFromContacts`) or send confirmation (`sendTemplate`).
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OkResponse"
-              example:
-                ok: true
+                oneOf:
+                  - $ref: "#/components/schemas/SelectedContactEmails"
+                  - $ref: "#/components/schemas/OkResponse"
+              examples:
+                sendTemplate:
+                  summary: Email sent
+                  value:
+                    ok: true
   /ext/members/patrols/:
     get:
       summary: Get patrols with members
@@ -1941,6 +2212,12 @@ paths:
             type: string
             enum: [ y, n ]
           description: Include pseudo-patrol for members not in a patrol.
+      description: |
+        Returns patrols (sixes, lodges, etc.) keyed by patrol ID, each with its
+        members. Negative IDs are pseudo-patrols: `-2` = Leaders, `-3` = Young
+        Leaders. Members with a rank also carry `patrol_role_level` (the numeric
+        rank, matching `patrolleader`) and `patrol_role_level_abbr` (e.g. `6er`,
+        `2nd`); the `patrol` field then includes the abbreviation (e.g. `Blue 6er`).
       responses:
         "200":
           description: Patrol list keyed by patrol ID.
@@ -1950,6 +2227,14 @@ paths:
                 type: object
                 additionalProperties: true
               example:
+                "-3":
+                  patrolid: "-3"
+                  sectionid: "-2"
+                  name: "Young Leaders (YLs)"
+                  active: "1"
+                  points: "0"
+                  census_costs: false
+                  members: [ ]
                 "-2":
                   patrolid: "-2"
                   sectionid: "-2"
@@ -1971,15 +2256,63 @@ paths:
                       scout_id: 3100001
                       photo_guid: "00000000-0000-0000-0000-000000000000"
                       patrolid: 12001
-                      patrolleader: "0"
-                      patrol: Blue
+                      patrolleader: "2"
+                      patrol: "Blue 6er"
                       sectionid: 45001
                       enddate: null
                       age: "10 / 2"
                       patrol_role_level_label: Sixer
                       active: 1
                       scoutid: 3100001
+                      patrol_role_level_abbr: "6er"
+                      patrol_role_level: 2
                       editable: true
+    post:
+      summary: Update patrol points
+      tags:
+        - Members
+      description: |
+        Sets the points total for a patrol. `points` is the **new total**, not an
+        increment. The response body is an empty JSON array on success.
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ updatePatrolPoints ]
+        - name: sectionid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Section ID.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [ patrolid, points ]
+              properties:
+                patrolid:
+                  type: string
+                  description: Patrol ID.
+                points:
+                  type: string
+                  description: New points total.
+            example:
+              patrolid: "12001"
+              points: "3"
+      responses:
+        "200":
+          description: Empty array on success.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { }
+              example: [ ]
   /ext/members/census/:
     get:
       summary: Get census details
@@ -2027,16 +2360,26 @@ paths:
                     _filterString: "sam lake"
   /ext/members/flexirecords/:
     get:
-      summary: Get flexi-records
+      summary: Get flexi-records, their structure, or their data
       tags:
         - Members
+      description: |
+        Flexi-records are section-defined spreadsheets of extra per-member data.
+
+        - `getFlexiRecords` — lists the section's flexi-records (`extraid` + `name`).
+        - `getStructure` — returns a flexi-record's definition. `config` is a
+          JSON-encoded string of column definitions (`[{"id":"f_1","name":"…"}]`)
+          and `structure` is the Dojo grid layout (a frozen name block, then the
+          editable `f_N` columns).
+        - `getData` — returns one row per member for a term, with each custom
+          column under its `f_N` key, plus `total` / `completed` summary columns.
       parameters:
         - name: action
           in: query
           required: true
           schema:
             type: string
-            enum: [ getPatrolsWithPeople ]
+            enum: [ getFlexiRecords, getStructure, getData ]
         - name: sectionid
           in: query
           required: true
@@ -2049,36 +2392,114 @@ paths:
           schema:
             type: string
             enum: [ y, n ]
-          description: Toggle archived flexi-records.
+          description: "`getFlexiRecords` — include archived flexi-records."
+        - name: extraid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Flexi-record ID (required for `getStructure` and `getData`).
+        - name: termid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Term ID (required for `getData`).
+        - name: nototal
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "`getData` — observed sent empty."
       responses:
         "200":
-          description: Flexi-record list.
+          description: Flexi-record list, structure, or data.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/FlexiRecords"
-              example:
-                identifier: extraid
-                label: name
-                items:
-                  - extraid: "23001"
+                oneOf:
+                  - $ref: "#/components/schemas/FlexiRecords"
+                  - type: object
+                    additionalProperties: true
+              examples:
+                getFlexiRecords:
+                  summary: Flexi-record list (action=getFlexiRecords)
+                  value:
+                    identifier: extraid
+                    label: name
+                    items:
+                      - extraid: "23001"
+                        name: "Hike Log"
+                getStructure:
+                  summary: Flexi-record structure (action=getStructure)
+                  value:
+                    extraid: "23001"
+                    sectionid: "45002"
                     name: "Hike Log"
+                    config: "[{\"id\":\"f_1\",\"name\":\"Distance (km)\",\"width\":\"150\"}]"
+                    total: "none"
+                    extrafields: "[]"
+                    archived: "0"
+                    soft_deleted: "0"
+                    archived_at: null
+                    structure:
+                      - rows:
+                          - name: "First Name"
+                            field: firstname
+                            width: "150px"
+                            formatter: boldFormatter
+                          - name: "Last Name"
+                            field: lastname
+                            width: "150px"
+                        noscroll: true
+                      - rows:
+                          - name: "Distance (km)"
+                            field: f_1
+                            width: "150px"
+                            formatter: boldFormatter
+                            editable: true
+                getData:
+                  summary: Flexi-record data (action=getData)
+                  value:
+                    identifier: scoutid
+                    items:
+                      - scoutid: "3100001"
+                        firstname: Jamie
+                        lastname: River
+                        dob: "2015-04-22"
+                        photo_guid: "00000000-0000-0000-0000-000000000000"
+                        patrolid: "12001"
+                        total: ""
+                        completed: ""
+                        f_1: "12"
+                        age: "10 / 04"
+                        patrol: Blue
+                        _filterString: "jamie river"
   /ext/members/attendance/:
     get:
-      summary: Get attendance data or badge requirements
+      summary: Get attendance data, register structure, or badge requirements
       tags:
         - Attendance
       description: |
         Attendance endpoints share this path with different `action` values.
-        Use `get` for attendance records or `getAttendanceBadgeRequirements`
-        for badge requirements tied to a date.
+
+        - `get` — the register: one row per member with a `yyyy-mm-dd` key for
+          each meeting they have a mark for (`Yes` / `No`), plus `meetings`
+          (date → meeting title), `visitors` and `parent_rota` (both objects,
+          empty when unused).
+        - `structure` — the Dojo grid layout for the register: a frozen name
+          block, then one column per meeting date (`tooltip` is the meeting title).
+        - `getAttendanceBadgeRequirements` — badge requirements linked to the
+          meeting on `date`. With `v=2` the response is an object with `badges`
+          (the requirements) and `badges_updated_at` (who last changed the
+          meeting's badge links); without `v` an array of requirements is returned.
       parameters:
         - name: action
           in: query
           required: true
           schema:
             type: string
-            enum: [ get, getAttendanceBadgeRequirements ]
+            enum: [ get, structure, getAttendanceBadgeRequirements ]
         - name: sectionid
           in: query
           required: true
@@ -2090,7 +2511,7 @@ paths:
           required: false
           schema:
             type: string
-          description: Term ID (required for `action=get`).
+          description: Term ID (required for `get` and `structure`).
         - name: section
           in: query
           required: true
@@ -2109,34 +2530,107 @@ paths:
           schema:
             type: string
           description: Meeting date (required for `action=getAttendanceBadgeRequirements`).
+        - name: v
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ "2" ]
+          description: "`getAttendanceBadgeRequirements` — response version. `2` returns the `{badges, badges_updated_at}` object."
       responses:
         "200":
-          description: Attendance or badge requirement response.
+          description: Attendance, structure, or badge requirement response.
           content:
             application/json:
               schema:
                 oneOf:
                   - $ref: "#/components/schemas/AttendanceList"
                   - $ref: "#/components/schemas/AttendanceBadgeRequirements"
-                additionalProperties: true
+                  - $ref: "#/components/schemas/AttendanceBadgeRequirementsV2"
+                  - $ref: "#/components/schemas/GridStructure"
               examples:
                 attendanceList:
-                  summary: Attendance list
+                  summary: Attendance list (action=get)
                   value:
                     identifier: scoutid
                     label: name
                     items:
                       - "2025-01-07": "Yes"
-                        total: 2
+                        "2025-01-14": "No"
+                        total: 1
+                        firstname: "Jamie"
+                        lastname: "River"
+                        photo_guid: "00000000-0000-0000-0000-000000000000"
+                        patrolid: 12001
+                        patrolleader: "2"
+                        patrol: "Blue"
+                        dob: "2015-04-22"
+                        sectionid: 45002
+                        startdate: "2021-09-01"
+                        enddate: null
+                        age: "10 / 04"
+                        patrol_role_level_label: "Sixer"
+                        active: true
+                        scoutid: 3100001
+                        _filterString: "jamie river blue"
+                      - "2025-01-07": "Yes"
+                        total: 1
                         firstname: "Robert"
                         lastname: "Baden Powell"
                         patrolid: -2
+                        patrol: "Leaders"
                         active: true
-                        scoutid: 2015779
+                        scoutid: 3100010
+                    visitors: { }
+                    parent_rota: { }
                     meetings:
                       "2025-01-07": "Welcome Back!"
+                      "2025-01-14": "Camp Skills Night"
+                structure:
+                  summary: Register grid layout (action=structure)
+                  value:
+                    - rows:
+                        - name: "First Name"
+                          field: firstname
+                          width: "100px"
+                          formatter: registerBoldFormatter
+                        - name: "Last Name"
+                          field: lastname
+                          width: "100px"
+                          formatter: registerBoldFormatter
+                      noscroll: true
+                    - rows:
+                        - name: "2025-01-07"
+                          field: "2025-01-07"
+                          formatter: doneFormatter
+                          width: "110px"
+                          tooltip: "Welcome Back!"
+                badgeRequirementsV2:
+                  summary: Attendance badge requirements (v=2)
+                  value:
+                    badges:
+                      - badge: "0"
+                        badge_id: "1002"
+                        badge_version: "0"
+                        column_id: "200101"
+                        badgeName: "Chef"
+                        badgetype: "activity"
+                        columngroup: "A"
+                        columnname: "a"
+                        description: "Learn about the main food groups."
+                        data: "14/01/2025"
+                        eveningid: 9500002
+                        meetingdate: "2025-01-14"
+                        link_from: "meeting"
+                        name: "Food Groups"
+                        section: "cubs"
+                        sameas_counter: 0
+                        sectionid: 45002
+                    badges_updated_at:
+                      - user_name: "Alex Scout"
+                        date_time: "14/01/2025 20:40"
                 badgeRequirements:
-                  summary: Attendance badge requirements
+                  summary: Attendance badge requirements (no v parameter)
                   value:
                     - badge_id: "1593"
                       badgeName: "Communicator"
@@ -2149,6 +2643,10 @@ paths:
       summary: Update attendance
       tags:
         - Attendance
+      description: |
+        Marks one or more members present/absent for a meeting date, optionally
+        awarding the badge requirements linked to that meeting. The response
+        body is the bare JSON literal `true` on success.
       parameters:
         - name: action
           in: query
@@ -2180,6 +2678,7 @@ paths:
                   type: string
                 present:
                   type: string
+                  description: "`Yes`, `No`, or `Absent` (observed)."
                 section:
                   type: string
                 sectionid:
@@ -2193,20 +2692,74 @@ paths:
               required: [ scouts, selectedDate, present, section, sectionid ]
               additionalProperties: true
             example:
-              scouts: "[3008213]"
+              scouts: "[3100001]"
               selectedDate: "2025-01-14"
-              present: "Absent"
+              present: "Yes"
               section: "cubs"
-              sectionid: "12345"
+              sectionid: "45002"
               completedBadges: "[]"
               customData: "[]"
       responses:
         "200":
-          description: Attendance update response.
+          description: The JSON literal `true` on success.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OkResponse"
+                type: boolean
+              example: true
+  /v3/members/attendance/visitors/{sectionid}:
+    post:
+      summary: Add or update a register visitor
+      tags:
+        - Attendance
+      description: |
+        Records a non-member visitor (or parent helper) against a meeting date.
+        Visitors appear in the `visitors` object of
+        `GET /ext/members/attendance/?action=get`.
+      parameters:
+        - name: sectionid
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Section ID.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [ name, meeting_date, present, type ]
+              properties:
+                name:
+                  type: string
+                  description: Visitor's name (free text).
+                meeting_date:
+                  type: string
+                  format: date
+                present:
+                  type: string
+                  enum: [ "Yes", "No" ]
+                type:
+                  type: string
+                  description: Observed `visitor`.
+            example:
+              name: "Visiting Leader"
+              meeting_date: "2025-01-14"
+              present: "Yes"
+              type: visitor
+      responses:
+        "200":
+          description: Visitor saved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data: [ ]
+                meta: [ ]
   /ext/customdata/:
     get:
       summary: Get custom data for a member
@@ -2355,7 +2908,7 @@ paths:
                   group_id: "2"
                   context: "members"
                   service: "desktop"
-                  "data[firstname]": "Helen"
+                  "data[firstname]": "Hazel"
                   "data[lastname]": "Park"
               updateColumn:
                 summary: Update a single custom column (action=updateColumn)
@@ -2529,99 +3082,151 @@ paths:
                     - sent-letter
   /ext/settings/emails/:
     get:
-      summary: Get email configuration for a section
+      summary: Get email configuration or delivery reports for a section
       tags:
         - Email
       description: |
-        Returns the email/newsletter configuration for a section, including
-        available events and patrols that can be used as recipient filters
-        when composing emails. Also indicates whether the section has a
-        newsletter slug configured and if it is live.
+        - `getConfig` — the email/newsletter configuration for a section,
+          including available events and patrols that can be used as recipient
+          filters when composing emails. Also indicates whether the section has
+          a newsletter slug configured and if it is live.
+        - `getDeliveryReport` — the section's sent (and, with
+          `include_scheduled=true`, scheduled) emails. The response is a **bare
+          array**: the first element is an `ALL` summary row
+          (`{id: "0", name: "ALL", type: "all", count}`), followed by one row per
+          email with send status, recipient/error/open counts and tracked links.
+        - `getDeliveryReportRows` — per-recipient delivery status for one email
+          (`email_id`). `status` is the display status (`sent`, `opened`, …) and
+          `status_raw` the provider status (`delivered`, `open`, …).
       parameters:
         - name: action
           in: query
           required: true
           schema:
             type: string
-            enum: [ getConfig ]
-          description: Must be `getConfig`.
+            enum: [ getConfig, getDeliveryReport, getDeliveryReportRows ]
         - name: sectionid
           in: query
-          required: true
+          required: false
           schema:
             type: string
-          description: Section ID.
+          description: Section ID (`getConfig`, `getDeliveryReport`).
+        - name: section_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Section ID (`getDeliveryReportRows`).
+        - name: email_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Email ID from `getDeliveryReport` (required for `getDeliveryReportRows`).
+        - name: generic_date
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ "true" ]
+          description: "`getDeliveryReport` — return `date` as `yyyy-mm-dd hh:mm:ss`."
+        - name: include_scheduled
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ "true" ]
+          description: "`getDeliveryReport` — include scheduled (not yet sent) emails."
       responses:
         "200":
-          description: Email configuration with events and patrols.
+          description: Email configuration, delivery report, or delivery report rows.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  found:
-                    type: boolean
-                  result:
-                    type: object
-                    properties:
-                      sectionid:
-                        type: string
-                      slug:
-                        type: string
-                        description: Newsletter slug for the section.
-                      numemails:
-                        type: string
-                        description: Number of emails sent (as string).
-                      live:
-                        type: string
-                        enum: [ "0", "1" ]
-                        description: Whether the newsletter is live.
-                  events:
-                    type: array
+                oneOf:
+                  - $ref: "#/components/schemas/EmailConfig"
+                  - type: array
                     items:
                       type: object
-                      properties:
-                        name:
-                          type: string
-                        slug:
-                          type: string
-                    description: Upcoming events that can be used as email filters.
-                  patrols:
-                    type: array
-                    items:
-                      type: object
-                      properties:
-                        name:
-                          type: string
-                        slug:
-                          type: string
-                    description: Patrols/sixes in the section.
-                  leaders:
-                    type: boolean
-                    description: Whether leaders are available as recipients.
-                additionalProperties: true
-              example:
-                found: true
-                result:
-                  sectionid: "45001"
-                  slug: "1stRiversideCubs"
-                  numemails: "0"
-                  live: "1"
-                events:
-                  - name: "Summer Camp 2025"
-                    slug: "SummerCamp2025"
-                  - name: "Investiture Ceremony"
-                    slug: "InvestitureCeremony"
-                patrols:
-                  - name: "Blue"
-                    slug: "Blue"
-                  - name: "Green"
-                    slug: "Green"
-                  - name: "Red"
-                    slug: "Red"
-                  - name: "Yellow"
-                    slug: "Yellow"
-                leaders: true
+                      additionalProperties: true
+                  - $ref: "#/components/schemas/V3Envelope"
+              examples:
+                getConfig:
+                  summary: Email configuration (action=getConfig)
+                  value:
+                    found: true
+                    result:
+                      sectionid: "45001"
+                      slug: "1stRiversideCubs"
+                      numemails: "0"
+                      live: "1"
+                    events:
+                      - name: "Summer Camp 2025"
+                        slug: "SummerCamp2025"
+                      - name: "Investiture Ceremony"
+                        slug: "InvestitureCeremony"
+                    patrols:
+                      - name: "Blue"
+                        slug: "Blue"
+                      - name: "Green"
+                        slug: "Green"
+                    leaders: true
+                getDeliveryReport:
+                  summary: Delivery report (action=getDeliveryReport)
+                  value:
+                    - id: "0"
+                      name: "ALL"
+                      type: "all"
+                      count: 1
+                    - id: 80000001
+                      type: "email"
+                      date: "2025-01-10 13:05:00"
+                      subject: "Weekly Meeting Reminder"
+                      status: "SENT"
+                      sent: 2
+                      errors: 0
+                      warnings: 0
+                      opens: 1
+                      hascontent: true
+                      config: null
+                      scheduled_recipient_count: 0
+                      failure_reason: null
+                      from_email: "cubs@example.org"
+                      has_attachments: false
+                      links:
+                        - url: "https://www.example.org/kit-list"
+                          click_count: 0
+                          last_clicked: null
+                      user_id: 100001
+                      photo_url: false
+                      from_name: "Alex Scout"
+                getDeliveryReportRows:
+                  summary: Per-recipient status (action=getDeliveryReportRows)
+                  value:
+                    status: true
+                    error: null
+                    data:
+                      - emailid: "80000001"
+                        sendtime: "10/01/2025 13:05"
+                        subject: "Weekly Meeting Reminder"
+                        email: "parent@example.org"
+                        status: "opened"
+                        lastupdated: "10/01/2025 17:46"
+                        member_id: "3100001"
+                        hascontent: true
+                        photo_guid: "00000000-0000-0000-0000-000000000000"
+                        firstname: "Jamie"
+                        lastname: "River"
+                        status_raw: "open"
+                        id: "0123456789abcdef0123456789abcdef"
+                        email_key: "parentexampleorg"
+                    meta:
+                      ids: [ "0123456789abcdef0123456789abcdef" ]
+                      total: 1
+                      has_attachments: false
+                      can_be_forwarded_status: "empty"
+                      itemstore:
+                        identifier: id
   /v3/members/contact/{sectionid}/removalWarnings:
     post:
       summary: Get pre-removal warnings for a member
@@ -2720,9 +3325,94 @@ paths:
                 data:
                   - firstname: Pat
                     lastname: Stone
+                    photo_guid: "00000000-0000-0000-0000-000000000000"
                     date_deleted: "2023-10-01"
+                    left_section: "2023-07-20"
                     id: 3100004
                 meta: [ ]
+  /v3/members/review/elsewhere/{sectionid}:
+    get:
+      summary: Get members who left this section and are elsewhere
+      tags:
+        - Members
+      description: |
+        Members who have left this section (`date_left`) but are still active in
+        other sections, listed with the names of those sections — typically
+        members who have moved on to the next section.
+      parameters:
+        - name: sectionid
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Section ID.
+      responses:
+        "200":
+          description: Members now in other sections.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  - id: 3100007
+                    photo_guid: "00000000-0000-0000-0000-000000000000"
+                    firstname: Morgan
+                    lastname: Hill
+                    date_left: "2025-04-11"
+                    sections:
+                      - "1st Riverside Scouts: Scouts"
+                meta: [ ]
+  /v3/members/review/future_transfers/{sectionid}:
+    get:
+      summary: Get scheduled (future) member transfers
+      tags:
+        - Members
+      description: |
+        Lists every current member with their scheduled transfer, if any
+        (`future_transfer` is `null` when none is set), plus `incoming` members
+        due to transfer into this section.
+      parameters:
+        - name: sectionid
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Section ID.
+      responses:
+        "200":
+          description: Current and incoming future transfers.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  current:
+                    - id: 3100001
+                      firstname: Jamie
+                      lastname: River
+                      photo_guid: "00000000-0000-0000-0000-000000000000"
+                      dob: "2015-04-22"
+                      future_transfer:
+                        id: 600001
+                        to_section_id: 45004
+                        to_group_name: "1st Riverside Scouts"
+                        to_section_name: "1st Riverside Scouts: Scouts"
+                        transfer_date: "2025-12-19"
+                    - id: 3100002
+                      firstname: Riley
+                      lastname: Park
+                      photo_guid: "00000000-0000-0000-0000-000000000000"
+                      dob: "2016-06-01"
+                      future_transfer: null
+                  incoming: [ ]
+                meta:
+                  can_edit: true
   /ext/programme/:
     get:
       summary: Programme endpoints
@@ -2793,19 +3483,19 @@ paths:
           required: false
           schema:
             type: string
-          description: Unknown (observed `/`).
+          description: "`programmeAttachmentsManifest` — directory within the manifest (observed `/`)."
         - name: temp
           in: query
           required: false
           schema:
             type: string
-          description: Unknown (observed `false`).
+          description: "`programmeAttachmentsManifest` — include uncommitted uploads (observed `false`)."
         - name: upload_mode
           in: query
           required: false
           schema:
             type: string
-          description: Unknown (observed `programme`).
+          description: "`programmeAttachmentsManifest` — observed `programme`."
       responses:
         "200":
           description: Programme response.
@@ -2816,7 +3506,7 @@ paths:
                   - $ref: "#/components/schemas/ProgrammeSummary"
                   - $ref: "#/components/schemas/ProgrammeDetails"
                   - $ref: "#/components/schemas/ProgrammeParentRotaMembers"
-                additionalProperties: true
+                  - $ref: "#/components/schemas/FileManifestResponse"
               examples:
                 programmeSummary:
                   summary: Programme summary
@@ -2834,11 +3524,14 @@ paths:
                     items:
                       - eveningid: "9500001"
                         title: "Camp Skills Night"
-                        parentsrequired: "1"
+                        parentsrequired: "0"
                         meetingdate: "2024-11-01"
+                        location: null
                         parentsattendingcount: "0"
                         primary_leader: false
-                        badges: [ ]
+                        badges:
+                          - name: "Teamwork"
+                            img: "sites/onlinescoutmanager.co.uk/badge_images/img_000000.png"
                         unavailable_leaders: 0
                 programmeDetails:
                   summary: Programme details (getProgramme with sectionid, termid and eveningid)
@@ -2857,23 +3550,65 @@ paths:
                         meetingdate: "2024-11-01"
                         starttime: "18:00:00"
                         endtime: "19:30:00"
-                        primary_leader_id: "1000001"
-                        config: null
+                        primary_leader_id: "0"
+                        config:
+                          has_badges: true
+                          badges_updated_at:
+                            - user_id: 100001
+                              date_time: "2024-10-25 19:56:16"
                         soft_deleted: "0"
+                        latitude: null
+                        longitude: null
+                        location: null
                         help:
                           - scoutid: "3100005"
-                            scout: "Taylor Wood"
+                            scout: "Quinn Wood"
                         unavailableleaders: [ ]
                         activities: [ ]
-                        badgelinks: [ ]
-                        seasonal_suggestions: [ ]
+                        badgelinks:
+                          - picture: "sites/onlinescoutmanager.co.uk/badge_images/img_000000.png"
+                            link_relation_id: "40000001"
+                            badge_id: "1001"
+                            badge_version: "0"
+                            column_id: "200001"
+                            badge: "1001_0"
+                            badgeLongName: "Teamwork"
+                            badgetype: "challenge"
+                            badgetypeLongName: "Challenge"
+                            columnname: "200001"
+                            columnnameLongName: "B: Examples = Camp Skills Night"
+                            data: "Camp Skills Night"
+                            section: "cubs"
+                            same_as: [ ]
+                            sectionLongName: "Cubs"
+                            label: "Challenge: Teamwork - Examples"
+                        seasonal_suggestions:
+                          - activityid: "10"
+                            title: "Team Building"
+                            description: "Various team building activities."
+                            runningtime: "60"
+                            location: "indoors"
+                            shared: "2"
+                            visibility: "all"
+                            site_type: "scouts"
+                            rating: 86
+                            icons: [ "popular", "runningtime-60" ]
+                            tags: [ "team building" ]
+                            review_summary:
+                              writeup:
+                                rating: 4.5
+                                number_reviews: 3
+                              activity:
+                                rating: 4.5
+                                number_reviews: 120
+                    badgelinks: { }
                 programmeParentRotaMembers:
                   summary: Parent rota members
                   value:
                     status: true
                     error: null
                     data:
-                      - scoutid: "2015779"
+                      - scoutid: "3100010"
                         firstname: "Robert"
                         lastname: "Baden Powell"
                         photo_guid: "00000000-0000-0000-0000-000000000000"
@@ -3030,8 +3765,27 @@ paths:
           required: true
           schema:
             type: string
-            enum: [ squirrels, beavers, cubs, scouts, explorers ]
+            enum: [ squirrels, beavers, cubs, scouts, explorers, adults ]
           description: Section type.
+        - name: parts
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ core, agenda, section_widgets, user_widgets ]
+          description: |
+            Returns only one slice of the dashboard. The web UI now makes four
+            requests, one per part; every response echoes `parts` back. Keys
+            observed per part:
+
+            | `parts` | Keys returned |
+            |---------|---------------|
+            | `core` | `is_full_admin`, `duplicate_admin_names`, `permissions` |
+            | `agenda` | `conf`, `patrols`, `birthdays`, `programme`, `events` |
+            | `section_widgets` | `notepad`, `subscription_expiring_soon`, `members`, `outstandingpayments`, `shop_orders_to_dispatch`, `badge_homework`, `deletable_members`, `due_badges`, `meetings_needing_badge_updates`, `pending_applicant_count`, `thanks` |
+            | `user_widgets` | `programme_reviews`, `badge_supplier_review_prompt`, `blocked_expense_card_transactions`, `chat_highlights`, `expense_cards`, `feature_request_voting`, `pending_expense_cardholder_application`, `recommendation`, `unanswered_question`, `user_to_do_tasks`, `whats_new` |
+
+            Omit `parts` to receive the combined response shown in the example.
       responses:
         "200":
           description: Dashboard next things response.
@@ -3135,6 +3889,2644 @@ paths:
                 meta:
                   itemstore:
                     identifier: name
+  /ext/events/summary/:
+    get:
+      summary: List events or the event audit log
+      tags:
+        - Events
+      description: |
+        - `get` — events for the term with headline attendance counts
+          (`yes` = total attending, split into `yes_members` / `yes_yls` /
+          `yes_leaders`; plus `no`, `invited`, `reserved`, `shown`). Dates come
+          in both UK (`dd/mm/yyyy`) and ISO (`startdate_g`) forms. `cost` is a
+          decimal string in pounds.
+        - `getEvents` — a lightweight list (`eventid`, `name`, `startdate`,
+          `attachments`). With `onlyArchived=1`, returns archived events only.
+        - `getAudit` — recent attendance changes made by parents through the
+          Parent Portal (`type=portal`), newest first.
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ get, getEvents, getAudit ]
+        - name: sectionid
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Section ID.
+        - name: termid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Term ID (`get`, `getEvents`).
+        - name: onlyArchived
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ "1" ]
+          description: "`getEvents` — only return archived events."
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ portal ]
+          description: "`getAudit` — audit source (observed `portal`)."
+      responses:
+        "200":
+          description: Dojo item store of events or audit entries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemStore"
+              examples:
+                get:
+                  summary: Events with attendance counts (action=get)
+                  value:
+                    identifier: eventid
+                    items:
+                      - eventid: "1700001"
+                        name: "Winter Sleepover"
+                        date: "06/12/2025"
+                        startdate_g: "2025-12-06"
+                        startdate: "06/12/2025"
+                        enddate: "07/12/2025"
+                        starttime: "11:00:00"
+                        endtime: "14:00:00"
+                        cost: "40.00"
+                        location: "Riverside Scout Hut"
+                        approval_status: null
+                        rota_offered: 0
+                        rota_accepted: 0
+                        rota_required: null
+                        yes: 18
+                        yes_members: 15
+                        yes_yls: 0
+                        yes_leaders: 3
+                        reserved: 0
+                        no: 2
+                        absent: 0
+                        invited: 4
+                        shown: 0
+                        x: 1
+                getEvents:
+                  summary: Archived events (action=getEvents&onlyArchived=1)
+                  value:
+                    identifier: eventid
+                    label: name
+                    items:
+                      - eventid: "1700002"
+                        name: "District Camp"
+                        startdate: "2024-06-19"
+                        attachments: false
+                getAudit:
+                  summary: Parent Portal changes (action=getAudit&type=portal)
+                  value:
+                    identifier: auditid
+                    items:
+                      - auditid: "50000001"
+                        eventid: "1700001"
+                        name: "Winter Sleepover"
+                        firstname: "Jamie"
+                        lastname: "River"
+                        photo_guid: "00000000-0000-0000-0000-000000000000"
+                        member_id: "3100001"
+                        updatedate: "2025-11-07 13:16:11"
+                        date: "07/11/2025 13:16"
+                        generic_date: "2025-11-07 13:16:11"
+                        updatedby: "Jamie"
+                        type: "attendance"
+                        desc: "Attendance: Yes"
+  /v3/events/event/{eventId}/basic_details:
+    get:
+      summary: Get event basic details
+      tags:
+        - Events
+      description: |
+        Name, location, dates/times, cost (number, in **pounds**), and
+        attendance limit. `meta` reports lock state (`past_locked`,
+        `shared_locked`) and whether the event is on the Parent Portal.
+      parameters:
+        - $ref: "#/components/parameters/EventIdPath"
+      responses:
+        "200":
+          description: Event basic details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  name: "Winter Sleepover"
+                  location: "Riverside Scout Hut"
+                  start_date: "2025-12-06"
+                  start_time: "11:00:00"
+                  end_date: "2025-12-07"
+                  end_time: "14:00:00"
+                  cost: 40
+                  attendance_limit: 24
+                  attendance_limit_includes_leaders: false
+                  extra:
+                    at_home:
+                      enabled: false
+                      introduction: ""
+                      parent_uploads_enabled: false
+                      chat_enabled: false
+                      activities: [ ]
+                    sharing:
+                      sharee: false
+                      deleted: false
+                  approval_status: null
+                  properties: [ ]
+                meta:
+                  read_only: false
+                  past_locked: false
+                  shared_locked: false
+                  maximum_attendance_limit: 0
+                  has_parent_portal: true
+  /v3/events/event/{eventId}/summary:
+    get:
+      summary: Get event summary
+      tags:
+        - Events
+      description: |
+        The event overview page. `data` holds the attending members, online
+        payment totals, linked finance totals, "at home" activity counts and
+        risk-assessment counts. `meta.event` is the full event record including
+        **every invited member with their date of birth**, payment schedule
+        (`payment_dates`) and kit list collection — treat as sensitive.
+
+        Money units differ within this response: `cost` is in pounds, while
+        `online_payments.received` / `expected` are also in pounds (expected =
+        attendees × cost).
+      parameters:
+        - $ref: "#/components/parameters/EventIdPath"
+      responses:
+        "200":
+          description: Event summary.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  members:
+                    - member_id: 3100001
+                      full_name: "Jamie River"
+                      photo_guid: "00000000-0000-0000-0000-000000000000"
+                      patrol_id: 12001
+                  reserved: [ ]
+                  sharing: false
+                  online_payments:
+                    received: 40
+                    expected: 720
+                    number_payments: 1
+                  transactions:
+                    income: 0
+                    expense: 0
+                  at_home:
+                    enabled: false
+                    comments_count: 0
+                    uploads_count: 0
+                    activities_count: 0
+                  risk_assessments:
+                    event: 0
+                    activity: 0
+                  cost: 40
+                meta:
+                  has_attachments: false
+                  archived: false
+                  isPastEventAndLocked: false
+                  isSharedAndParentPortalSettingsLocked: false
+                  event:
+                    eventid: 1700001
+                    name: "Winter Sleepover"
+                    type: null
+                    startdate: "2025-12-06"
+                    enddate: "2025-12-07"
+                    starttime: "11:00:00"
+                    endtime: "14:00:00"
+                    cost: 40
+                    location: "Riverside Scout Hut"
+                    latitude: "51.5007"
+                    longitude: "-0.1246"
+                    notes: ""
+                    notepad: ""
+                    publicnotes: "<h1>Winter Sleepover</h1><p>Bring a sleeping bag.</p>"
+                    config: null
+                    sectionid: 45002
+                    kit_list_collection_id: 4401
+                    googlecalendar: null
+                    archived: false
+                    soft_deleted: false
+                    confdate: "2025-11-30"
+                    allowchanges: false
+                    disablereminders: false
+                    attendancelimit: 24
+                    limitincludesleaders: false
+                    allowbooking: true
+                    attendancereminder: 0
+                    approval_status: null
+                    created_at: "2025-08-25 20:47:25"
+                    created_by: 100001
+                    members:
+                      - eventid: 1700001
+                        scoutid: 3100001
+                        attending: "Yes"
+                        payment: "Manual"
+                        details: null
+                        member:
+                          scoutid: 3100001
+                          firstname: "Jamie"
+                          lastname: "River"
+                          photo_guid: "00000000-0000-0000-0000-000000000000"
+                          dob: "2015-04-22"
+                          started: "2021-09-01"
+                          created_date: "2021-09-01 18:30:00"
+                          last_accessed: "2025-09-15 19:00:00"
+                    payment_dates:
+                      - paymentid: 900001
+                        schemeid: 47001
+                        date: "2025-11-19"
+                        amount: "40.00"
+                        name: "Winter Sleepover"
+                        archived: 0
+                        description: null
+                        order_id: null
+                    activities: [ ]
+                    kit_list_collection:
+                      id: 4401
+                      associated_type: "event"
+                      section_id: 45002
+                      name: "Sleepovers"
+                      instructions: "Please label all kit."
+                      created_at: "2023-09-27 20:59:35"
+                      updated_at: "2023-09-27 20:59:35"
+                  read_only: false
+  /v3/events/event/{eventId}/members/attendance:
+    get:
+      summary: Get event attendance
+      tags:
+        - Events
+      description: |
+        One row per member in the section with their invitation/attendance
+        state. `attending` is lowercase (`yes`, `no`, `invited`, or empty for
+        not invited). `age_at_start` is `years / months`, or `25+` for adults.
+        `meta.structure` lists any custom event columns.
+      parameters:
+        - $ref: "#/components/parameters/EventIdPath"
+        - name: term_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Term ID.
+      responses:
+        "200":
+          description: Event attendance.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  - member_id: 3100001
+                    patrol_id: 12001
+                    first_name: "Jamie"
+                    last_name: "River"
+                    _filterString: "jamie river"
+                    photo_guid: "00000000-0000-0000-0000-000000000000"
+                    attending: "yes"
+                    emailable: true
+                    details: [ ]
+                    age_at_start: "10 / 07"
+                meta:
+                  maximum_attendance_limit: 0
+                  has_parent_portal: true
+                  can_set_absent: false
+                  structure: [ ]
+                  rota_accepted: 0
+                  structure_read_only: false
+                  attendance_read_only: false
+                  columns_read_only: false
+                  approval_locked: false
+                  shared_deadline_locked: false
+                  approval_status: null
+  /v3/events/event/{eventId}/members/payments:
+    get:
+      summary: Get event payments
+      tags:
+        - Events
+      description: |
+        Same rows as `members/attendance`, plus `payment` (`manual` or
+        `automatic`) and `received_income` / `expected_income` in **pounds**.
+        `meta.structure` lists one read-only column per payment scheme charge
+        (`field` is `p<paymentid>`).
+      parameters:
+        - $ref: "#/components/parameters/EventIdPath"
+        - name: term_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Term ID.
+      responses:
+        "200":
+          description: Event payments.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  - member_id: 3100001
+                    patrol_id: 12001
+                    first_name: "Jamie"
+                    last_name: "River"
+                    _filterString: "jamie river"
+                    photo_guid: "00000000-0000-0000-0000-000000000000"
+                    attending: "yes"
+                    emailable: true
+                    payment: "automatic"
+                    details: [ ]
+                    received_income: 40
+                    expected_income: 40
+                meta:
+                  maximum_attendance_limit: 0
+                  has_parent_portal: true
+                  can_set_absent: false
+                  structure:
+                    - name: "Winter Sleepover"
+                      field: "p900001"
+                      read_only: true
+                  structure_read_only: false
+                  attendance_read_only: false
+                  columns_read_only: false
+                  approval_locked: false
+                  shared_deadline_locked: false
+                  approval_status: null
+                  has_payments: true
+  /v3/events/event/{eventId}/parent_portal:
+    get:
+      summary: Get event Parent Portal settings
+      tags:
+        - Events
+      description: |
+        Booking settings shown to parents: confirmation deadline, whether
+        changes/bookings are allowed, reminder settings, the linked kit list
+        collection, and the map location. `meta.kit_list_collections` lists the
+        section's collections (name suffixed with the item count).
+      parameters:
+        - $ref: "#/components/parameters/EventIdPath"
+      responses:
+        "200":
+          description: Parent Portal settings.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  start_date: "2025-12-06"
+                  confirmation_deadline: "2025-11-30"
+                  cost: 40
+                  allow_changes_before_deadline: false
+                  allow_booking_when_show_in_portal: true
+                  disable_invitation_reminders: false
+                  send_attendance_reminders: 0
+                  kit_list_collection_id: 4401
+                  latitude: "51.5007"
+                  longitude: "-0.1246"
+                meta:
+                  read_only: false
+                  past_locked: false
+                  shared_locked: false
+                  confirmation_deadline_locked: false
+                  has_parent_portal: true
+                  currency: "GBP"
+                  kit_list_collections:
+                    - id: 4401
+                      name: "Sleepovers (12)"
+  /v3/events/event/{eventId}/timetable:
+    get:
+      summary: Get event timetable
+      tags:
+        - Events
+      parameters:
+        - $ref: "#/components/parameters/EventIdPath"
+      responses:
+        "200":
+          description: Event timetable.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  start_date: "2025-12-06"
+                  end_date: "2025-12-07"
+                  start_time: "11:00:00"
+                  end_time: "14:00:00"
+                  entries: [ ]
+                meta:
+                  read_only: false
+                  past_locked: false
+                  shared_locked: false
+                  details_locked: false
+  /v3/events/event/{eventId}/activities:
+    get:
+      summary: Get event "at home" activities
+      tags:
+        - Events
+      description: |
+        Activities attached to the event (the "at home" / remote activity
+        feature). `meta.extra` mirrors the event's `extra` settings.
+      parameters:
+        - $ref: "#/components/parameters/EventIdPath"
+      responses:
+        "200":
+          description: Event activities.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data: [ ]
+                meta:
+                  extra:
+                    at_home:
+                      enabled: false
+                      introduction: ""
+                      parent_uploads_enabled: false
+                      chat_enabled: false
+                      activities: [ ]
+                    sharing:
+                      sharee: false
+                      deleted: false
+  /v3/kit/{sectionid}/event:
+    get:
+      summary: Get kit list items and collections
+      tags:
+        - Events
+      description: |
+        Kit lists ("what to bring") for events. `data` is the catalogue of kit
+        items (OSM-wide items have `section_id: 0`), grouped by `heading`;
+        `meta.collections` are the section's named kit lists.
+      parameters:
+        - name: sectionid
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Section ID.
+      responses:
+        "200":
+          description: Kit items and collections.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  - id: 39
+                    associated_type: "event"
+                    section_id: 0
+                    heading: "Activities"
+                    name: "Bike"
+                    description: "Check brakes and gears work."
+                    purchase_link: ""
+                    multiple: false
+                    created_at: "2022-07-05 13:11:40"
+                    updated_at: "2022-07-05 13:11:40"
+                    collection_items: [ ]
+                meta:
+                  collections:
+                    - id: 4401
+                      associated_type: "event"
+                      section_id: 45002
+                      name: "Sleepovers"
+                      instructions: "Please label all kit."
+                      created_at: "2023-09-27 20:59:35"
+                      updated_at: "2023-09-27 20:59:35"
+  /v3/kit/{sectionid}/event/{collectionId}:
+    post:
+      summary: Update a kit list collection
+      tags:
+        - Events
+      description: |
+        Saves a kit list collection. `items` is a JSON array of
+        `{"item_id": <kit item id>, "quantity": <n>}` and **replaces** the
+        collection's contents.
+      parameters:
+        - name: sectionid
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Section ID.
+        - name: collectionId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Kit list collection ID.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                instructions:
+                  type: string
+                items:
+                  type: string
+                  description: JSON array of `{item_id, quantity}`.
+            example:
+              name: "Sleepovers"
+              instructions: "Please label all kit."
+              items: "[{\"item_id\":39,\"quantity\":1},{\"item_id\":40,\"quantity\":1}]"
+      responses:
+        "200":
+          description: Collection saved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data: [ ]
+                meta: [ ]
+  /v3/finances/accounting/financial_year/section/{sectionid}:
+    get:
+      summary: List financial years
+      tags:
+        - Finance
+      description: |
+        The section's financial years, newest first, each with income/expense
+        totals. Use the `id` with the cashbook, budget and annual report
+        endpoints. **All accounting amounts are integers in pence.**
+      parameters:
+        - $ref: "#/components/parameters/SectionIdPath"
+      responses:
+        "200":
+          description: Financial years.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  - id: 7002
+                    section_id: 45003
+                    start_date: "2025-04-06"
+                    end_date: "2026-04-05"
+                    created_at: "2025-04-06 09:00:00"
+                    updated_at: "2025-04-06 09:00:00"
+                    title: "2025 - 2026"
+                    transaction_summary:
+                      total_income: 250000
+                      total_expense: 180000
+                meta: [ ]
+  /v3/finances/accounting/financial_year/cashbook/transactions/year/{financialYearId}:
+    get:
+      summary: List cashbook transactions for a financial year
+      tags:
+        - Finance
+      description: |
+        Paginated cashbook. Each transaction carries its category split
+        (`categories[]`, each with an `amount` and the resolved `category`),
+        and is linked to the imported bank line via `bank_account_transaction_id`.
+        `meta` includes year totals, the full category list
+        (`categories`), the categories used this year
+        (`categories_in_financial_year`), and tracked `items`.
+
+        Amounts are in **pence**. Payment-provider payouts are typically split
+        into an income category plus a `Bank Fees` expense category, so
+        `categories[].amount` may not sum to the headline `amount`.
+      parameters:
+        - name: financialYearId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Financial year ID.
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 25
+      responses:
+        "200":
+          description: Cashbook page.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  - id: 800001
+                    incrementing_id: 101
+                    section_id: 45003
+                    date: "2025-10-08"
+                    description: "PAYOUT REF EXAMPLE-0001"
+                    description_sanitised: "PAYOUT REF EXAMPLE"
+                    bank_account_reference_sanitised: "PAYOUT REF EXAMPLE"
+                    bank_account_transaction_id: 900001
+                    type: "income"
+                    amount: 9706
+                    locked: false
+                    categorised: 9706
+                    number_categories: 2
+                    auto_categorisation: "no guess"
+                    created_at: "2025-10-10 16:24:16"
+                    updated_at: "2025-10-10 16:24:16"
+                    categories:
+                      - id: 810001
+                        category_id: 3
+                        item_id: 0
+                        transaction_id: 800001
+                        amount: 10000
+                        category:
+                          id: 3
+                          section_id: 0
+                          name: "Membership Fees"
+                          type: "income"
+                          icon: "membership"
+                        item: null
+                      - id: 810002
+                        category_id: 30
+                        item_id: 0
+                        transaction_id: 800001
+                        amount: 294
+                        category:
+                          id: 30
+                          section_id: 0
+                          name: "Bank Fees"
+                          type: "expense"
+                          icon: "bank"
+                        item: null
+                    attachments: 0
+                meta:
+                  number_transactions: 1
+                  total_expense: 294
+                  total_income: 10000
+                  total_amount: 0
+                  categories:
+                    - id: 55
+                      section_id: 0
+                      name: "Admin"
+                      type: "expense"
+                      icon: "administration"
+                      usages: [ ]
+                  categories_in_financial_year: [ ]
+                  items: [ ]
+                  financial_year:
+                    start_date: "2025-04-06"
+                    end_date: "2026-04-05"
+  /v3/finances/accounting/financial_year/cashbook/transactions/section/{sectionid}:
+    post:
+      summary: Create a cashbook transaction
+      tags:
+        - Finance
+      description: |
+        Creates a cashbook entry, usually from an imported bank line
+        (`bank_account_transaction_id`). `amount` is in **pence**. `categories`
+        is a JSON array splitting the amount across categories:
+
+        | Field | Notes |
+        |-------|-------|
+        | `category_id` | Category ID (see the `categories` list in cashbook `meta`). |
+        | `item_id` | Tracked item, or `0`. |
+        | `amount` | Pence. |
+        | `description`, `payment_id`, `scheme_id`, `is_fee` | Present when the split comes from an online payment payout. |
+
+        `attachments_id` is a client-generated GUID used to upload receipts via
+        the cashbook uploads manifest before the transaction exists.
+      parameters:
+        - $ref: "#/components/parameters/SectionIdPath"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [ description, type, date, amount, categories ]
+              properties:
+                description:
+                  type: string
+                type:
+                  type: string
+                  enum: [ income, expense ]
+                date:
+                  type: string
+                  format: date
+                amount:
+                  type: integer
+                  description: Pence.
+                categories:
+                  type: string
+                  description: JSON array of category splits.
+                attachments_id:
+                  type: string
+                  format: uuid
+                bank_account_transaction_id:
+                  type: string
+            example:
+              description: "PAYOUT REF EXAMPLE-0002"
+              type: income
+              date: "2025-04-29"
+              amount: 2411
+              categories: "[{\"category_id\":3,\"item_id\":0,\"amount\":2500},{\"category_id\":30,\"item_id\":0,\"amount\":89,\"is_fee\":true}]"
+              attachments_id: "00000000-0000-0000-0000-000000000002"
+              bank_account_transaction_id: "900002"
+      responses:
+        "200":
+          description: Created transaction, with the category OSM would have guessed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  id: 800002
+                  guessed_category_id: 3
+                  guessed_item_id: 0
+                meta: [ ]
+  /v3/finances/accounting/financial_year/cashbook/transactions/{transactionId}:
+    post:
+      summary: Update a cashbook transaction
+      tags:
+        - Finance
+      description: |
+        Same body as create. When editing existing splits, each entry in
+        `categories` includes its `id` (and the other fields returned by the
+        cashbook list).
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Cashbook transaction ID.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties: true
+            example:
+              description: "PAYOUT REF EXAMPLE-0001"
+              type: income
+              date: "2025-10-08"
+              amount: 9706
+              categories: "[{\"id\":810001,\"category_id\":3,\"item_id\":0,\"amount\":10000},{\"id\":810002,\"category_id\":30,\"item_id\":0,\"amount\":294}]"
+      responses:
+        "200":
+          description: Transaction updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data: [ ]
+                meta: [ ]
+  /v3/finances/accounting/financial_year/budgets/year/{financialYearId}:
+    get:
+      summary: Get budgets for a financial year
+      tags:
+        - Finance
+      description: Every category with its budgeted `amount` (pence) for the year.
+      parameters:
+        - name: financialYearId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Financial year ID.
+      responses:
+        "200":
+          description: Budgets by category.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  - id: 55
+                    section_id: 0
+                    name: "Admin"
+                    type: "expense"
+                    icon: "administration"
+                    budgets: [ ]
+                    amount: 20000
+                meta:
+                  financial_year:
+                    id: 7002
+                    section_id: 45003
+                    start_date: "2025-04-06"
+                    end_date: "2026-04-05"
+  /v3/finances/accounting/financial_year/annual_report/{financialYearId}:
+    get:
+      summary: Get annual report
+      tags:
+        - Finance
+      description: |
+        Income and expense by category, balances per bank account, and a
+        summary (balance brought forward, carried forward, …) for the year,
+        optionally side-by-side with another year (`other_financial_year_id`,
+        `0` for none). Amounts in pence.
+      parameters:
+        - name: financialYearId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Financial year ID.
+        - name: other_financial_year_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Comparison year ID, or `0`.
+      responses:
+        "200":
+          description: Annual report.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  expense:
+                    - id: 55
+                      name: "Admin"
+                      this_year_amount: 11750
+                      other_year_amount: 0
+                  income:
+                    - id: 3
+                      name: "Membership Fees"
+                      this_year_amount: 250000
+                      other_year_amount: 230000
+                  bank_accounts:
+                    - id: 5001
+                      name: "Main Account"
+                      this_year_amount: 400000
+                      other_year_amount: 350000
+                  summary:
+                    - id: 0
+                      name: "Account balance brought forward"
+                      this_year_amount: 350000
+                      other_year_amount: 300000
+                    - id: 1
+                      name: "Account balance carried forward"
+                      this_year_amount: 400000
+                      other_year_amount: 350000
+                meta:
+                  financial_year:
+                    id: 7002
+                    section_id: 45003
+                    start_date: "2025-04-06"
+                    end_date: "2026-04-05"
+                  other_financial_years: [ ]
+                  other_financial_year_id: 0
+                  bank_accounts_have_invalid_opening_balance: false
+  /v3/finances/accounting/reports/overview/{sectionid}:
+    get:
+      summary: Get monthly finance overview
+      tags:
+        - Finance
+      description: Rolling 12 months keyed by `yyyy-mm`, with `income`, `expense` and running `total` balance (pence).
+      parameters:
+        - $ref: "#/components/parameters/SectionIdPath"
+      responses:
+        "200":
+          description: Monthly overview.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  "2025-09":
+                    income: 50000
+                    expense: 11750
+                    total: 388000
+                  "2025-10":
+                    income: 10000
+                    expense: 0
+                    total: 403000
+                meta: [ ]
+  /v3/finances/accounting/bank_accounts/section/{sectionid}:
+    get:
+      summary: List bank accounts
+      tags:
+        - Finance
+      description: |
+        The section's bank accounts with opening/current balances (pence) and
+        the last CSV import column mapping. An account with a non-null
+        `expense_account` is the OSM expense-card account (its value is the
+        payment provider's connected-account ID).
+      parameters:
+        - $ref: "#/components/parameters/SectionIdPath"
+      responses:
+        "200":
+          description: Bank accounts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  - id: 5001
+                    section_id: 45003
+                    name: "Main Account"
+                    opening_balance: 300000
+                    opening_date: "2021-02-05"
+                    current_balance: 403000
+                    config:
+                      last_import_mapping:
+                        headers: [ "Number", "Date", "Account", "Amount", "Subcategory", "Memo" ]
+                        column_count: 6
+                        csv_layout:
+                          - column_number: 0
+                            column_letter: "A"
+                            heading: "Number"
+                            target_field: "do_not_import"
+                          - column_number: 1
+                            column_letter: "B"
+                            heading: "Date"
+                            target_field: "date"
+                        column_letters: "ABCDEF"
+                    expense_account: null
+                    created_at: "2023-12-10 17:06:23"
+                    updated_at: "2024-02-06 15:05:53"
+                    deleted_at: null
+                    updated_at_local_date_time: "06/02/2024 15:05"
+                    first_transaction_date: "2021-02-05"
+                    last_transaction_date: "2025-10-05"
+                    number_unprocessed_transactions: 0
+                  - id: 5002
+                    section_id: 45003
+                    name: "Expense Account"
+                    opening_balance: 0
+                    opening_date: "2023-11-29"
+                    current_balance: 0
+                    config: null
+                    expense_account: "acct_EXAMPLE0000000000"
+                    created_at: "2023-11-29 16:20:55"
+                    updated_at: "2023-11-29 16:20:55"
+                    deleted_at: null
+                    updated_at_local_date_time: "29/11/2023 16:20"
+                    first_transaction_date: null
+                    last_transaction_date: null
+                    number_unprocessed_transactions: 0
+                meta:
+                  internal_transfer_difference: 0
+  /v3/finances/accounting/bank_accounts/{bankAccountId}/transactions:
+    get:
+      summary: List imported bank transactions
+      tags:
+        - Finance
+      description: |
+        Imported bank statement lines for an account. `mode=unprocessed`
+        returns lines not yet turned into cashbook entries. `meta` carries the
+        category and item lists for categorising them.
+      parameters:
+        - name: bankAccountId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Bank account ID.
+        - name: mode
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Observed `unprocessed`.
+        - name: expense_cardholder_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter to one expense cardholder, or `0` for all.
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 25
+      responses:
+        "200":
+          description: Bank transactions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data: [ ]
+                meta:
+                  number_transactions: 0
+                  categories:
+                    - id: 45
+                      section_id: 0
+                      name: "Activity Equipment"
+                      type: "expense"
+                      icon: "activity"
+                      usages: [ ]
+                  items:
+                    - id: 4001
+                      section_id: 45003
+                      name: "Minibus"
+                      associated_type: null
+                      associated_section_id: 0
+                      associated_id: 0
+                      categories: [ 55 ]
+                      archived_at: null
+                      deleted_at: null
+  /v3/finances/accounting/bank_account_transactions/{bankAccountTransactionId}/guess_category:
+    get:
+      summary: Guess a category for a bank transaction
+      tags:
+        - Finance
+      description: |
+        Returns OSM's suggested `category_id` / `item_id` for an imported bank
+        line (`0` if no guess), any payout breakdown, and the
+        `next_bank_transaction` to process — used to step through
+        uncategorised lines one at a time.
+      parameters:
+        - name: bankAccountTransactionId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Imported bank transaction ID.
+      responses:
+        "200":
+          description: Category guess.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  category_id: 33
+                  item_id: 0
+                  payout_details: [ ]
+                  next_bank_transaction:
+                    id: 900003
+                    bank_account_id: 5001
+                    card_id: 0
+                    cardholder_id: 0
+                    transaction_id: 0
+                    reference: "EXAMPLE PAYEE REF"
+                    description: null
+                    amount: 2500
+                    date: "2025-04-28"
+                    is_transfer: false
+                    created_at: "2025-10-10 16:23:53"
+                    updated_at: "2025-10-10 16:23:53"
+                meta: [ ]
+  /v3/finances/accounting/bank_accounts/{bankAccountId}/trustees:
+    get:
+      summary: List expense account trustees
+      tags:
+        - Finance
+      description: |
+        The people registered against the expense-card account with the
+        payment provider (KYC). Each person has their role flags
+        (`director`, `executive`, `representative`, `account_opener`, …),
+        outstanding `requirements`, and identity `verification` status.
+        **Contains personal data of adult volunteers.**
+      parameters:
+        - name: bankAccountId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Bank account ID (the expense account).
+      responses:
+        "200":
+          description: Trustees.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  people:
+                    - id: 20001
+                      account_identifier: "acct_EXAMPLE0000000000"
+                      person_identifier: "person_EXAMPLE0000000001"
+                      first_name: "Alex"
+                      last_name: "Scout"
+                      email: "leader@example.org"
+                      relationship:
+                        authorizer: false
+                        director: true
+                        executive: true
+                        legal_guardian: false
+                        owner: false
+                        percent_ownership: null
+                        representative: true
+                        title: "Group Lead Volunteer"
+                        account_opener: true
+                      requirements:
+                        alternatives: [ ]
+                        currently_due: [ ]
+                        errors: [ ]
+                        eventually_due: [ ]
+                        past_due: [ ]
+                        pending_verification: [ ]
+                      verification:
+                        additional_document:
+                          back: null
+                          details: null
+                          details_code: null
+                          front: null
+                        details: null
+                        details_code: null
+                        document:
+                          back: null
+                          details: null
+                          details_code: null
+                          front: null
+                        status: "verified"
+                      created_at: "2023-11-29 16:23:01"
+                      updated_at: "2025-10-08 01:35:57"
+                meta: [ ]
+  /v3/finances/accounting/expense_cardholders/section/{sectionid}:
+    get:
+      summary: List expense cardholders
+      tags:
+        - Finance
+      description: |
+        Expense cardholders for the section, each with spend limits (pence),
+        allowed `spending_categories`, their cards (`last4`, expiry, status),
+        the user, and the linked expense bank account. `meta` reports the
+        card-issuing status and the category list.
+      parameters:
+        - $ref: "#/components/parameters/SectionIdPath"
+      responses:
+        "200":
+          description: Expense cardholders.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  - id: 6001
+                    cardholder_identifier: "ich_EXAMPLE0000000001"
+                    status: "active"
+                    user_id: 100001
+                    section_id: 45003
+                    bank_account_id: 5002
+                    total_amount_spent: 0
+                    total_spend_limit: 50000
+                    new_card_available: false
+                    spending_categories: [ 45, 55 ]
+                    requirements:
+                      disabled_reason: null
+                      past_due: [ ]
+                    deleted: false
+                    created_at: "2025-10-09 12:57:51"
+                    created_by: 100001
+                    updated_at: "2025-10-10 14:26:19"
+                    daily_spend_limit: 0
+                    weekly_spend_limit: 0
+                    monthly_spend_limit: 0
+                    uncategorised_transactions: 0
+                    periodic_limits: null
+                    cards:
+                      - id: 6101
+                        card_identifier: "ic_EXAMPLE0000000001"
+                        status: "inactive"
+                        cardholder_id: 6001
+                        last4: "0000"
+                        exp_month: 1
+                        exp_year: 2030
+                        has_been_activated: false
+                        created_at: "2025-10-10 14:26:17"
+                        updated_at: "2025-10-10 14:26:17"
+                    user:
+                      photo_url: false
+                      full_name: "Alex Scout"
+                    bank_account:
+                      id: 5002
+                      section_id: 45003
+                      name: "Expense Account"
+                      current_balance: 0
+                      expense_account: "acct_EXAMPLE0000000000"
+                meta:
+                  unallocated_balance: 0
+                  has_expense_account: true
+                  requirements_due: [ ]
+                  requirements_deadline: null
+                  future_requirements_due: [ ]
+                  future_requirements_deadline: null
+                  bank_account_id: 5002
+                  issuing_status: "active"
+                  balance: 0
+                  categories: [ ]
+                  failed_payouts: [ ]
+                  pending_payout_change: null
+                  card_issuing_disabled_reason: null
+                  card_issuing_status: "active"
+                  account_rejected_reason: null
+                  account_rejected_details: [ ]
+  /v3/finances/accounting/items/section/{sectionid}:
+    get:
+      summary: List tracked finance items
+      tags:
+        - Finance
+      description: |
+        "Items" are things you track spend against across categories (e.g. a
+        minibus, or an event via `associated_type`). Each item reports its
+        income/expense (pence) within the given financial year.
+      parameters:
+        - $ref: "#/components/parameters/SectionIdPath"
+        - name: financial_year_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Financial year ID.
+      responses:
+        "200":
+          description: Items.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  - id: 4001
+                    section_id: 45003
+                    name: "Minibus"
+                    associated_type: null
+                    associated_section_id: 0
+                    associated_id: 0
+                    categories: [ 55 ]
+                    archived_at: null
+                    deleted_at: null
+                    income_expense:
+                      income: 0
+                      expense: 11750
+                      has_transactions: true
+                    associated_name: null
+                    categories_in_use: [ 55 ]
+                    associated_section: null
+                meta:
+                  categories:
+                    "55": "Admin"
+                  all_items: [ ]
+                  all_categories: [ ]
+  /v3/finances/accounting/items/links/event/{eventId}:
+    get:
+      summary: List cashbook lines linked to an event
+      tags:
+        - Finance
+      parameters:
+        - $ref: "#/components/parameters/EventIdPath"
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 25
+      responses:
+        "200":
+          description: Linked transactions with totals (pence).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data: [ ]
+                meta:
+                  number_transactions: 0
+                  total_income: 0
+                  total_expense: 0
+                  total_amount: 0
+  /ext/finances/invoices/summary/:
+    get:
+      summary: List invoices
+      tags:
+        - Finance
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ getInvoiceSummary ]
+        - name: sectionid
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: termid
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: is_dgrid
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ "true" ]
+      responses:
+        "200":
+          description: Dojo item store of invoices.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemStore"
+              example:
+                identifier: invoiceid
+                label: name
+                items: [ ]
+  /ext/finances/accounting/financial_year/cashbook/transactions/uploads/:
+    get:
+      summary: Cashbook receipt attachments manifest
+      tags:
+        - Files
+      description: |
+        File manifest for receipts attached to a cashbook transaction. With
+        `temp=true`, `id` is the client-generated `attachments_id` GUID used
+        before the transaction is created. See [Files](#tag/Files).
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ manifest ]
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Transaction ID, or the `attachments_id` GUID when `temp=true`.
+        - name: section_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: temp
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ "true", "false" ]
+        - name: bank_account_transaction_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/FileManifest"
+  /ext/members/email/campaigns/:
+    get:
+      summary: List email campaign templates
+      tags:
+        - Email
+      description: |
+        Saved campaign (newsletter) templates. `campaign_preview` is a relative
+        URL to an HTML preview. Load a campaign's content with
+        `/v3/members/email/campaigns/snippets/{campaignId}`.
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ listCampaigns ]
+        - name: section_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Campaigns.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  - campaign_id: 70001
+                    title: "Termly Newsletter"
+                    template: "turquoise"
+                    created_at: "2024-12-19 21:10:35"
+                    last_used: "2024-12-20 20:46:18"
+                    updated_at: "2024-12-19 21:10:42"
+                    campaign_preview: "/ext/members/email/campaigns/?action=preview&campaign_id=70001"
+                    has_scheduled_email: false
+                meta: [ ]
+  /v3/members/email/campaigns/snippets/{campaignId}:
+    get:
+      summary: Get a campaign's content snippets
+      tags:
+        - Email
+      description: |
+        The ordered content blocks (`snippets`) of a campaign template, the
+        HTML `snippet_templates` used to render each block type
+        (`fullwidth_text`, `text_text`, `splitter`), and the template's `body`
+        and `style`. When sending, each `snippet_id` becomes a region key in
+        `sendTemplate`'s `edits`. Fetching a campaign for editing is preceded
+        by `POST /ext/generic/locks/?action=obtain` with `item=campaign_<id>`.
+      parameters:
+        - name: campaignId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Campaign ID.
+      responses:
+        "200":
+          description: Campaign snippets.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  snippets:
+                    - snippet_id: 300001
+                      snippet: "fullwidth_text"
+                      contents:
+                        - text: "<h1>Termly Newsletter</h1>"
+                      config: null
+                      order: 1
+                  snippet_templates:
+                    fullwidth_text: "<tr id=\"s___snippet_id[0]\">…</tr>"
+                    text_text: "__css__\n<tr id=\"s___snippet_id[0]\">…</tr>"
+                    splitter: "<tr id=\"s___snippet_id[0]\">…</tr>"
+                  campaign_template: "turquoise"
+                  body: "<div class=\"body\">…</div>"
+                  style: ".template_editor_turquoise { … }"
+                meta: [ ]
+  /v3/members/email/compose/{sectionid}:
+    get:
+      summary: Get members for the email composer
+      tags:
+        - Email
+      parameters:
+        - $ref: "#/components/parameters/SectionIdPath"
+        - name: term_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Members available as recipients.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  - member_id: 3100001
+                    firstname: "Jamie"
+                    lastname: "River"
+                    patrol_id: 12001
+                    patrol: "Blue"
+                meta: [ ]
+  /v3/members/email/draft/{sectionid}:
+    get:
+      summary: List draft emails
+      tags:
+        - Email
+      description: |
+        The current user's draft emails for the section. `edits` is the decoded
+        region array (the same structure sent to `sendTemplate`).
+        `meta.template_count` is the number of saved campaigns.
+      parameters:
+        - $ref: "#/components/parameters/SectionIdPath"
+      responses:
+        "200":
+          description: Drafts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  - emailid: 80000001
+                    guid: "00000000-0000-0000-0000-000000000001"
+                    status: "DRAFT"
+                    sectionid: 45002
+                    emailtype: "MANUAL"
+                    subject: ""
+                    sendtime: "2025-09-22 20:52:04"
+                    content: null
+                    edits:
+                      - - text: "<p>Draft text</p>"
+                    campaign_id: 0
+                    to: null
+                    user_id: 100001
+                    from_email: ""
+                    full_from_email: ""
+                    config: null
+                meta:
+                  template_count: 3
+  /v3/members/email/draft:
+    post:
+      summary: Save a draft email
+      tags:
+        - Email
+      description: |
+        Autosaves the email being composed. Called repeatedly while editing;
+        the `guid` identifies the draft so repeated saves update the same
+        record. Returns the draft's ID, which is then passed to `sendTemplate`
+        as `draft_email_id`.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                subject:
+                  type: string
+                guid:
+                  type: string
+                  format: uuid
+                section_id:
+                  type: string
+                campaign_id:
+                  type: string
+                edits:
+                  type: string
+                  description: JSON object of template regions (see `sendTemplate`).
+            example:
+              subject: "Weekly Meeting Reminder"
+              guid: "00000000-0000-0000-0000-000000000001"
+              section_id: "45002"
+              campaign_id: "0"
+              edits: "{\"0\":{\"0\":{\"text\":\"<p>Draft text</p>\"}}}"
+      responses:
+        "200":
+          description: Draft saved.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  id: 80000001
+                meta: [ ]
+  /ext/members/sms/:
+    get:
+      summary: Get SMS delivery report
+      tags:
+        - Email
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ getDeliveryReport ]
+        - name: sectionid
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: dateFormat
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ uk ]
+      responses:
+        "200":
+          description: Dojo item store of sent SMS messages.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemStore"
+              example:
+                identifier: smsid
+                items: [ ]
+  /ext/settings/parents/loginhistory/:
+    get:
+      summary: Get Parent Portal login history
+      tags:
+        - Members
+      description: |
+        One row per member showing the linked Parent Portal account (if any),
+        how often it has been used, and password / failed-login recency
+        (`never`, `over_30_days`, …). `id` is `<member_id>-<user_id>` (the
+        user part is empty when no account is linked). **Contains parents'
+        names and email addresses.**
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ getLoginHistoryMyMember ]
+        - name: section_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Login history.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  - member_id: 3100001
+                    first_name: "Jamie"
+                    last_name: "River"
+                    photo_guid: "00000000-0000-0000-0000-000000000000"
+                    patrol_id: 12001
+                    access_count: 12
+                    date_last_accessed: "2025-05-12 16:27:39"
+                    user_id: 200101
+                    access_type: "member"
+                    user_full_name: "Morwenna River"
+                    user_pic: null
+                    user_email: "parent@example.org"
+                    password_last_updated: "over_30_days"
+                    id: "3100001-200101"
+                    last_failed_login: "never"
+                    _filterString: "jamie river morwenna river parent@example.org"
+                    show_unlock: false
+                  - member_id: 3100002
+                    first_name: "Riley"
+                    last_name: "Park"
+                    photo_guid: null
+                    patrol_id: 12002
+                    access_count: 0
+                    date_last_accessed: ""
+                    user_id: 0
+                    access_type: null
+                    user_full_name: null
+                    user_pic: null
+                    user_email: null
+                    password_last_updated: "never"
+                    id: "3100002-"
+                    last_failed_login: "never"
+                    _filterString: "riley park "
+                    show_unlock: false
+                meta:
+                  itemstore:
+                    identifier: id
+  /ext/programme/activities/:
+    get:
+      summary: Activity library
+      tags:
+        - Programme
+      description: |
+        OSM's shared activity library.
+
+        - `getActivity` — one activity (`id` + `version`) with its full
+          details, attached `files`, available `versions`, suitable `sections`,
+          and whether the current user owns it.
+        - `searchByNewActivities` — the newest shared activities (up to 100
+          `items`; `num` is the total, `query` echoes `newest activities`).
+        - `getTags` — every activity tag in use OSM-wide (a very large list —
+          over ten thousand entries).
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ getActivity, searchByNewActivities, getTags ]
+        - name: id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Activity ID (`getActivity`).
+        - name: version
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Activity version (`getActivity`).
+        - name: activity_unique_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: "`getActivity` — observed `0`."
+        - name: section
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Section type.
+        - name: sectionid
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Section ID (`getActivity`).
+        - name: section_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Section ID (`searchByNewActivities`).
+      responses:
+        "200":
+          description: Activity, search results, or tags.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+              examples:
+                getActivity:
+                  summary: One activity (action=getActivity)
+                  value:
+                    details:
+                      id: "500001"
+                      activityid: "50001"
+                      version: "0"
+                      userid: "100002"
+                      site_type: "scouts"
+                      user_name: "Sam Example"
+                      title: "Knot Relay"
+                      description: "Teams race to tie a set of knots."
+                      resources: "Rope lengths"
+                      instructions: "Split into teams…"
+                      runningtime: "15"
+                      location: "both"
+                      shared: "2"
+                      visibility: "all"
+                      rating: 5
+                      updated_at: "2025-10-08 21:27:17"
+                      generic: "0"
+                      created_at: "2025-10-08 21:27:17"
+                      updatetime: "2025-10-08 21:27:17"
+                      icons: [ "runningtime-15", "inandoutdoors" ]
+                      tags: [ ]
+                      review_summary:
+                        writeup:
+                          rating: 0
+                          number_reviews: 0
+                        activity:
+                          rating: 0
+                          number_reviews: 0
+                    files:
+                      - fileid: 600001
+                        activityid: "50001"
+                        filename: "knot-relay.pdf"
+                        type: "application/pdf"
+                        icon: "page_white_acrobat"
+                        preview: "/ext/programme/activities/attachments/files/?action=preview&…"
+                        from: "uploads"
+                        name: "knot-relay.pdf"
+                    thumb: false
+                    rating: 5
+                    used: 0
+                    similar: [ ]
+                    sections: [ "beavers", "cubs", "scouts", "explorers" ]
+                    versions:
+                      - value: "0"
+                        user_name: "Sam Example"
+                        updatetime: "2025-10-08 21:27:17"
+                        selected: true
+                        current: true
+                    tags: [ ]
+                    is_owner: false
+                    can_delete: false
+                searchByNewActivities:
+                  summary: Newest activities (action=searchByNewActivities)
+                  value:
+                    items:
+                      - activityid: "50001"
+                        title: "Knot Relay"
+                        description: "Teams race to tie a set of knots."
+                        runningtime: "15"
+                        location: "both"
+                        shared: "2"
+                        visibility: "all"
+                        site_type: "scouts"
+                        rating: 5
+                        icons: [ "runningtime-15", "inandoutdoors" ]
+                        tags: [ ]
+                        review_summary:
+                          writeup:
+                            rating: 0
+                            number_reviews: 0
+                          activity:
+                            rating: 0
+                            number_reviews: 0
+                    num: 1
+                    query: "newest activities"
+                getTags:
+                  summary: All activity tags (action=getTags)
+                  value:
+                    identifier: name
+                    label: name
+                    items:
+                      - name: "camp"
+                      - name: "knots"
+  /ext/programme/activities/attachments/files/:
+    get:
+      summary: Activity attachments manifest
+      tags:
+        - Files
+      description: |
+        File manifest for an activity's attachments. Unlike other manifests,
+        this one is populated: each entry in `manifest` is keyed by path and
+        has the file's `mime`, `bytes`, human `size`, upload/access dates,
+        `access_count`, and `preview` URLs. See [Files](#tag/Files).
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ manifest ]
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Activity ID.
+        - name: activity_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Activity ID.
+        - name: activity_unique_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: The activity version's unique ID (`details.id` from `getActivity`).
+        - name: section_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Observed `0`.
+        - name: path
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: temp
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Activity file manifest.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileManifestResponse"
+              example:
+                status: true
+                error: null
+                data:
+                  manifest:
+                    "/knot-relay.pdf":
+                      upload_id: 700001
+                      path: "/knot-relay.pdf"
+                      directory: "/"
+                      name: "knot-relay.pdf"
+                      mime: "application/pdf"
+                      extension: "pdf"
+                      icon: "pdf"
+                      bytes: 990000
+                      size: "967 KB"
+                      lost: false
+                      temp: false
+                      date_uploaded: "08/10/2025 22:25"
+                      date_last_accessed: "10/10/2025 16:52"
+                      access_count: 13
+                      platform: "s3cache"
+                      meta: [ ]
+                      uploader_id: 0
+                      preview: "/ext/programme/activities/attachments/files/?action=preview&…"
+                      preview_sizes:
+                        dialog: "/ext/programme/activities/attachments/files/?action=preview&size=dialog&…"
+                      props: [ ]
+                  config:
+                    endpoints:
+                      put: "put"
+                      get: "get"
+                      preview: "preview"
+                    single_file_size_limit_human: "5.0 MB"
+                    directory_limit: 99
+                    chunked_uploads: false
+                meta:
+                  size:
+                    remaining: false
+                    remaining_human: false
+                    total: false
+                    total_human: false
+  /v3/programme/{eveningId}/bookings:
+    get:
+      summary: Get meeting with parent bookings
+      tags:
+        - Programme
+      description: The meeting record (same fields as `getProgramme`, numeric types) plus `bookings` for parent helper slots.
+      parameters:
+        - name: eveningId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Meeting ID.
+      responses:
+        "200":
+          description: Meeting with bookings.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  eveningid: 9500001
+                  sectionid: 45002
+                  title: "Camp Skills Night"
+                  notesforparents: "Bring a warm coat."
+                  notesforhelpingparents: null
+                  parentsrequired: 0
+                  games: ""
+                  prenotes: ""
+                  postnotes: ""
+                  leaders: ""
+                  meetingdate: "2024-11-01"
+                  starttime: "18:00:00"
+                  endtime: "19:30:00"
+                  primary_leader_id: 0
+                  config:
+                    has_badges: true
+                  googlecalendar: null
+                  soft_deleted: 0
+                  latitude: null
+                  longitude: null
+                  location: null
+                  bookings: [ ]
+                meta: [ ]
+  /v3/todo/tasks/meeting/{eveningId}:
+    get:
+      summary: Get to-do tasks for a meeting
+      tags:
+        - Programme
+      description: Tasks attached to a meeting. `meta.users` maps user IDs to the leaders tasks can be assigned to.
+      parameters:
+        - name: eveningId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Meeting ID.
+        - name: section_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Tasks.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data: [ ]
+                meta:
+                  can_read: true
+                  can_edit: true
+                  users:
+                    "100001":
+                      name: "Alex Scout"
+                      photo_url: null
+                      user_id: 100001
+  /ext/mymember/programme/leader_resources/:
+    get:
+      summary: Meeting leader-resources manifest
+      tags:
+        - Files
+      description: |
+        Read-only file manifest of leader resources shared to the Parent
+        Portal for a meeting (`id` = meeting ID). Upload endpoints are `false`
+        in `config.endpoints`. See [Files](#tag/Files).
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ manifest ]
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Meeting ID.
+        - name: section_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: temp
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/FileManifest"
+  /ext/mymember/events/leader_resources/:
+    get:
+      summary: Event leader-resources manifest
+      tags:
+        - Files
+      description: Read-only file manifest of leader resources for an event. See [Files](#tag/Files).
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ manifest ]
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Event ID.
+        - name: event_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Event ID.
+        - name: section_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: temp
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/FileManifest"
+  /ext/recipes/:
+    get:
+      summary: List recipes
+      tags:
+        - Programme
+      description: |
+        The recipe database (OSM-wide and the section's own). Each recipe has
+        meal/cooking-method tags, a `suitability` map of dietary flags (`true`
+        = suitable for that diet / free from that allergen), and an estimated
+        `my_cost_per_person` in pounds.
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ getRecipes ]
+        - name: section_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Recipes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  - recipe_id: 5
+                    title: "Campfire Bananas"
+                    description: "Easy dessert cooked in foil."
+                    cache:
+                      tags:
+                        meals: [ "pudding" ]
+                        cooking_methods: [ "campfire" ]
+                      suitability:
+                        vegetarian: true
+                        vegan: false
+                        gluten: true
+                        dairy: false
+                        nuts: true
+                        wheat: true
+                        fish: true
+                        shellfish: true
+                        egg: true
+                        soya: true
+                        oatmeal: true
+                    cooking_time: "20"
+                    image_lastupdated: null
+                    last_updated: "2025-10-10 14:07:03"
+                    image: "upload"
+                    original_recipe_id: "0"
+                    tags: [ "pudding", "campfire" ]
+                    image_url: "/ext/recipes/thumbnails/?recipe_id=5"
+                    review_summary:
+                      recipe:
+                        rating: 0
+                        number_reviews: 0
+                    my_cost_per_person: 0.35
+                meta: [ ]
+  /ext/risk_assessments/:
+    get:
+      summary: Get a risk assessment
+      tags:
+        - Risk Assessments
+      description: |
+        The hazards recorded against a meeting, activity, or event. `data` is
+        an array of hazards (a Dojo item store: `meta.itemstore` gives the
+        identifier `hazard_id` and label `hazard`). For `activity` and
+        `generic_event` assessments, `meta` also carries `review` (last review,
+        or `null`) and `review_months` (review interval, observed `12`).
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ getRiskAssessment ]
+        - name: section_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+          description: |
+            What the assessment is attached to. Observed: `meeting`,
+            `activity`, `generic_event`.
+        - name: associated_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: |
+            ID of the meeting / activity / event. Observed `0` with
+            `type=generic_event` (the section's generic event assessment).
+      responses:
+        "200":
+          description: Hazards.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data: [ ]
+                meta:
+                  itemstore:
+                    identifier: hazard_id
+                    label: hazard
+                  review: null
+                  review_months: 12
+  /ext/risk_assessments/uploads/:
+    get:
+      summary: Risk assessment attachments manifest
+      tags:
+        - Files
+      description: File manifest for documents attached to a risk assessment. See [Files](#tag/Files).
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ manifest ]
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Meeting (or event) ID.
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Observed `meeting`.
+        - name: section_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Observed `/meeting/`.
+        - name: temp
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/FileManifest"
+  /ext/generic/locks/:
+    post:
+      summary: Obtain or clear an edit lock
+      tags:
+        - Generic
+      description: |
+        Advisory locks that stop two leaders editing the same thing at once
+        (observed for email campaigns, `item=campaign_<campaignId>`).
+
+        - `obtain` — returns a `lock_id`; `duration` is in seconds and the UI
+          re-obtains periodically while editing.
+        - `clear` — releases a lock by `lock_id`.
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ obtain, clear ]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                item:
+                  type: string
+                  description: "`obtain` — what to lock, e.g. `campaign_70001`."
+                duration:
+                  type: string
+                  description: "`obtain` — seconds (observed `60`)."
+                read_allowed:
+                  type: string
+                  enum: [ "true", "false" ]
+                  description: "`obtain` — whether others may read while locked."
+                write_allowed:
+                  type: string
+                  enum: [ "true", "false" ]
+                  description: "`obtain` — whether others may write while locked."
+                type:
+                  type: string
+                  description: "`obtain` — observed `write`."
+                lock_id:
+                  type: string
+                  description: "`clear` — lock to release."
+                section_id:
+                  type: string
+            examples:
+              obtain:
+                summary: Obtain a lock
+                value:
+                  item: "campaign_70001"
+                  duration: "60"
+                  read_allowed: "false"
+                  write_allowed: "false"
+                  type: write
+                  section_id: "45002"
+              clear:
+                summary: Clear a lock
+                value:
+                  lock_id: "9900001"
+                  section_id: "45002"
+      responses:
+        "200":
+          description: Lock result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              examples:
+                obtain:
+                  summary: Lock obtained
+                  value:
+                    status: true
+                    error: null
+                    data:
+                      lock_id: 9900001
+                    meta: [ ]
+                clear:
+                  summary: Lock cleared
+                  value:
+                    status: true
+                    error: null
+                    data: [ ]
+                    meta: [ ]
+  /ext/generic/featureusage/:
+    post:
+      summary: Record feature usage (telemetry)
+      tags:
+        - Generic
+      description: |
+        UI telemetry — the web app reports actions such as
+        `viewed attendance register` or `drag drop patrols`. Third-party
+        integrations have no need to call this.
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ add ]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                feature:
+                  type: string
+                section_id:
+                  type: string
+            example:
+              feature: "viewed attendance register"
+              section_id: "45002"
+      responses:
+        "200":
+          description: Recorded.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+  /ext/users/auth/:
+    post:
+      summary: Session keep-alive ping
+      tags:
+        - User
+      description: |
+        Polled by the web app to keep the session alive and detect inactivity.
+        `inactive` appears to be the number of seconds since the user's last
+        interaction.
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ ping ]
+        - name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Ping result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  inactive:
+                    type: integer
+              example:
+                inactive: 34
+  /ext/users/notifications/:
+    get:
+      summary: Get user notifications
+      tags:
+        - User
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ get ]
+        - name: section_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Notifications.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data: [ ]
+                meta: [ ]
+  /ext/settings/accountpreferences/:
+    post:
+      summary: Set the user's default section
+      tags:
+        - User
+      description: Sets which section opens by default after login (the `isDefault` flag in startup `roles`). No request body — everything is in the query string.
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ updateDefaultSection ]
+        - name: section_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: section
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Section type.
+      responses:
+        "200":
+          description: Default section updated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data: [ ]
+                meta: [ ]
+  /v3/menu-preferences/{sectionid}:
+    get:
+      summary: Get menu preferences
+      tags:
+        - User
+      description: The user's customised navigation menu for the section (`hidden` items and custom `order`).
+      parameters:
+        - $ref: "#/components/parameters/SectionIdPath"
+      responses:
+        "200":
+          description: Menu preferences.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  hidden: [ ]
+                  order: { }
+                meta: [ ]
+  /v3/favourites/{sectionid}:
+    get:
+      summary: Get favourites
+      tags:
+        - User
+      parameters:
+        - $ref: "#/components/parameters/SectionIdPath"
+        - name: term_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: The user's favourited items.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  items: [ ]
+                meta: [ ]
 components:
   securitySchemes:
     oauth2:
@@ -3154,6 +6546,72 @@ components:
             section:badge:read: Read badge records and progress
             section:event:read: Read events and programme data
             section:programme:read: Read programme summaries and meetings
+  parameters:
+    SectionIdPath:
+      name: sectionid
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Section ID.
+    EventIdPath:
+      name: eventId
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Event ID.
+  responses:
+    FileManifest:
+      description: File manifest (see the Files tag for the shape).
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/FileManifestResponse"
+          example:
+            status: true
+            error: null
+            data:
+              manifest: [ ]
+              config:
+                endpoints:
+                  put: "put"
+                  get: "get"
+                  preview: "preview"
+                  rename: "rename"
+                  move: "move"
+                  delete: "delete"
+                  createDirectory: "createDirectory"
+                  getDirectory: "getDirectory"
+                  renameDirectory: "renameDirectory"
+                  moveDirectory: "moveDirectory"
+                  deleteDirectory: "deleteDirectory"
+                  putTemp: "putTemp"
+                  commitTemp: "commitTemp"
+                  revertTemp: "revertTemp"
+                  partPut: "partPut"
+                can_delete_own_files: false
+                allowed_extensions: [ "pdf", "bmp", "gif", "jpg", "png" ]
+                allowed_mime: [ "application/pdf", "image/*" ]
+                max_file_size: 26214400
+                max_file_size_human: "25.0 MB"
+                allow_empty: false
+                single_file_size_limit: 10485760
+                single_file_size_limit_human: "10.0 MB"
+                max_files: 10
+                directory_limit: 1
+                total_files_size_limit: 40789606
+                total_files_size_limit_human: "38.9 MB"
+                upload_available_space: 10
+                upload_limit: 10
+                chunked_uploads: false
+                preview_sizes: [ "dialog" ]
+            meta:
+              size:
+                remaining: 40789606
+                remaining_human: "38.9 MB"
+                total: 40789606
+                total_human: "38.9 MB"
   schemas:
     StartupConfigPayload:
       type: object
@@ -4239,4 +7697,191 @@ components:
           type: array
           items:
             type: object
+      additionalProperties: true
+    V3Envelope:
+      type: object
+      description: |
+        Standard wrapper used by `/v3/` endpoints and newer `/ext/` actions.
+        `data` and `meta` are endpoint-specific; an empty `meta` is serialised
+        as `[]` rather than `{}`.
+      properties:
+        status:
+          type: boolean
+        error:
+          type: string
+          nullable: true
+        data:
+          description: Endpoint-specific payload (object, array, or null).
+        meta:
+          description: Endpoint-specific metadata (object, or `[]` when empty).
+      additionalProperties: true
+    ItemStore:
+      type: object
+      description: |
+        Dojo data store format used by older `/ext/` endpoints: `identifier`
+        names the unique key in each item, `label` the display field.
+      properties:
+        identifier:
+          type: string
+        label:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      additionalProperties: true
+    GridStructure:
+      type: array
+      description: |
+        Dojo grid layout: an array of column blocks, each with `rows` of column
+        definitions (`name`, `field`, `width`, optional `formatter`, `tooltip`,
+        `editable`). A block with `noscroll: true` is the frozen left block.
+      items:
+        type: object
+        properties:
+          rows:
+            type: array
+            items:
+              type: object
+              additionalProperties: true
+          noscroll:
+            type: boolean
+        additionalProperties: true
+    AttendanceBadgeRequirementsV2:
+      type: object
+      properties:
+        badges:
+          type: array
+          items:
+            $ref: "#/components/schemas/AttendanceBadgeRequirement"
+        badges_updated_at:
+          type: array
+          items:
+            type: object
+            properties:
+              user_name:
+                type: string
+              date_time:
+                type: string
+                description: "`dd/mm/yyyy hh:mm`."
+      additionalProperties: true
+    EmailConfig:
+      type: object
+      properties:
+        found:
+          type: boolean
+        result:
+          type: object
+          properties:
+            sectionid:
+              type: string
+            slug:
+              type: string
+              description: Newsletter slug for the section.
+            numemails:
+              type: string
+              description: Number of emails sent (as string).
+            live:
+              type: string
+              enum: [ "0", "1" ]
+              description: Whether the newsletter is live.
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              slug:
+                type: string
+          description: Upcoming events that can be used as email filters.
+        patrols:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              slug:
+                type: string
+          description: Patrols/sixes in the section.
+        leaders:
+          type: boolean
+          description: Whether leaders are available as recipients.
+      additionalProperties: true
+    FileManifestResponse:
+      type: object
+      description: |
+        Shared response for every file-attachment `manifest` action. `manifest`
+        is `[]` when empty, otherwise an object keyed by file path. `config`
+        describes upload rules; `config.endpoints` maps each operation to the
+        `action` value to call on the same URL (or `false` when not permitted).
+      properties:
+        status:
+          type: boolean
+        error:
+          type: string
+          nullable: true
+        data:
+          type: object
+          properties:
+            manifest:
+              oneOf:
+                - type: array
+                  maxItems: 0
+                  items: { }
+                - type: object
+                  additionalProperties:
+                    type: object
+                    properties:
+                      upload_id:
+                        type: integer
+                      path:
+                        type: string
+                      directory:
+                        type: string
+                      name:
+                        type: string
+                      mime:
+                        type: string
+                      extension:
+                        type: string
+                      bytes:
+                        type: integer
+                      size:
+                        type: string
+                      date_uploaded:
+                        type: string
+                      preview:
+                        type: string
+                    additionalProperties: true
+            config:
+              type: object
+              properties:
+                endpoints:
+                  type: object
+                  additionalProperties: { }
+                allowed_extensions:
+                  type: array
+                  items:
+                    type: string
+                allowed_mime:
+                  type: array
+                  items:
+                    type: string
+                max_file_size:
+                  nullable: true
+                  type: integer
+                single_file_size_limit:
+                  nullable: true
+                  type: integer
+                max_files:
+                  description: Integer limit, `null`, or `false` when unlimited.
+                chunked_uploads:
+                  type: boolean
+              additionalProperties: true
+        meta:
+          type: object
+          additionalProperties: true
       additionalProperties: true

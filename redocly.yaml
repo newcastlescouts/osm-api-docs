@@ -1,0 +1,12 @@
+apis:
+  main:
+    root: openapi.yaml
+
+extends:
+  - minimal
+
+rules:
+  # Both already default to "error" in the minimal ruleset; set explicitly
+  # so CI keeps failing on these even if the ruleset's defaults change.
+  struct: error
+  no-unresolved-refs: error

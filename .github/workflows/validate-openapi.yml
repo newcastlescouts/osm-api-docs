@@ -1,0 +1,37 @@
+name: Validate OpenAPI
+
+on:
+  pull_request:
+    paths:
+      - openapi.yaml
+      - redocly.yaml
+      - .github/workflows/validate-openapi.yml
+  push:
+    branches:
+      - main
+    paths:
+      - openapi.yaml
+      - redocly.yaml
+      - .github/workflows/validate-openapi.yml
+  workflow_dispatch:
+
+env:
+  REDOCLY_TELEMETRY: "off"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Lint OpenAPI specification
+        run: npx --yes @redocly/cli@2.40.0 lint openapi.yaml --config redocly.yaml
+
+      - name: Bundle OpenAPI specification
+        run: npx --yes @redocly/cli@2.40.0 bundle openapi.yaml --config redocly.yaml > /dev/null

@@ -3477,7 +3477,7 @@ paths:
           required: false
           schema:
             type: string
-          description: Return verbose programme summary (observed `1`).
+          description: Set to `1` to add `badges` and `unavailable_leaders` to each summary item.
         - name: path
           in: query
           required: false
@@ -3513,16 +3513,13 @@ paths:
                   value:
                     items:
                       - eveningid: "9500001"
-                        sectionid: "45001"
                         title: "Camp Skills Night"
-                        notesforparents: "Bring a warm coat."
                         parentsrequired: "1"
                         meetingdate: "2024-11-01"
-                        starttime: "18:00:00"
-                        endtime: "19:30:00"
-                        soft_deleted: "0"
+                        parentsattendingcount: "0"
+                        primary_leader: false
                 programmeSummaryVerbose:
-                  summary: Programme summary (verbose=1)
+                  summary: Programme summary with verbose=1
                   value:
                     items:
                       - eveningid: "9500001"
@@ -3537,7 +3534,7 @@ paths:
                             img: "sites/onlinescoutmanager.co.uk/badge_images/img_000000.png"
                         unavailable_leaders: 0
                 programmeDetails:
-                  summary: Programme details
+                  summary: Programme details (getProgramme with sectionid, termid and eveningid)
                   value:
                     items:
                       - eveningid: "9500001"
@@ -3545,7 +3542,7 @@ paths:
                         title: "Camp Skills Night"
                         notesforparents: "Bring a warm coat."
                         notesforhelpingparents: null
-                        parentsrequired: "0"
+                        parentsrequired: "1"
                         games: ""
                         prenotes: ""
                         postnotes: ""
@@ -3621,6 +3618,9 @@ paths:
       summary: Update programme meeting parts
       tags:
         - Programme
+      description: |
+        Fields left out of `parts` are unchanged. Unlike `getProgramme`, the
+        response is a flat object with no `items` wrapper or `status`.
       parameters:
         - name: action
           in: query
@@ -3641,29 +3641,57 @@ paths:
                   type: string
                 parts:
                   type: string
-                  description: JSON object of fields to update (e.g., title, notesforparents, primary_leader_id).
+                  description: |
+                    JSON-encoded object of `ProgrammeMeeting` fields to change. Observed:
+                    `title`, `prenotes`, `games`, `postnotes`, `notesforparents`.
               required: [ sectionid, eveningid, parts ]
               additionalProperties: true
-            example:
-              sectionid: "12345"
-              eveningid: "9464403"
-              parts: "{\"title\":\"Astronomy Night 2\"}"
+            examples:
+              title:
+                summary: Rename a meeting
+                value:
+                  sectionid: "12345"
+                  eveningid: "9464403"
+                  parts: "{\"title\":\"Astronomy Night 2\"}"
+              clear:
+                summary: Clear the notes for parents
+                value:
+                  sectionid: "12345"
+                  eveningid: "9464403"
+                  parts: "{\"notesforparents\":\"\"}"
       responses:
         "200":
-          description: Updated programme meeting details.
+          description: The full meeting after the update.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ProgrammeDetails"
+                $ref: "#/components/schemas/ProgrammeMeeting"
               example:
-                items:
-                  - eveningid: "9464403"
-                    sectionid: "12345"
-                    title: "Astronomy Night"
-                    meetingdate: "2025-01-21"
-                    starttime: "17:30:00"
-                    endtime: "18:45:00"
+                eveningid: "9464403"
+                sectionid: "12345"
+                title: "Astronomy Night"
+                notesforparents: "Bring a torch."
+                notesforhelpingparents: null
+                parentsrequired: "0"
+                games: "Stars and planets tag"
+                prenotes: "Set up the telescope before the meeting."
+                postnotes: ""
+                leaders: ""
+                meetingdate: "2025-01-21"
+                starttime: "17:30:00"
+                endtime: "18:45:00"
+                primary_leader_id: "1000001"
+                config:
+                  has_badges: false
+                soft_deleted: "0"
+                help: [ ]
+                unavailableleaders: [ ]
+                activities: [ ]
                 badgelinks: [ ]
+                seasonal_suggestions:
+                  - activityid: "10"
+                    title: "Team Building"
+                    description: "Various team building activities."
   /ext/programme/clouds/:
     get:
       summary: Get badge tag cloud
@@ -6136,7 +6164,12 @@ paths:
       summary: Get a risk assessment
       tags:
         - Risk Assessments
-      description: The hazards recorded for a meeting or event. `meta.itemstore` gives the Dojo identifier (`hazard_id`) and label (`hazard`).
+      description: |
+        The hazards recorded against a meeting, activity, or event. `data` is
+        an array of hazards (a Dojo item store: `meta.itemstore` gives the
+        identifier `hazard_id` and label `hazard`). For `activity` and
+        `generic_event` assessments, `meta` also carries `review` (last review,
+        or `null`) and `review_months` (review interval, observed `12`).
       parameters:
         - name: action
           in: query
@@ -6154,13 +6187,17 @@ paths:
           required: true
           schema:
             type: string
-          description: What the assessment is attached to (observed `meeting`).
+          description: |
+            What the assessment is attached to. Observed: `meeting`,
+            `activity`, `generic_event`.
         - name: associated_id
           in: query
           required: true
           schema:
             type: string
-          description: Meeting (or event) ID.
+          description: |
+            ID of the meeting / activity / event. Observed `0` with
+            `type=generic_event` (the section's generic event assessment).
       responses:
         "200":
           description: Hazards.
@@ -6176,6 +6213,8 @@ paths:
                   itemstore:
                     identifier: hazard_id
                     label: hazard
+                  review: null
+                  review_months: 12
   /ext/risk_assessments/uploads/:
     get:
       summary: Risk assessment attachments manifest
@@ -7292,11 +7331,90 @@ components:
         items:
           type: array
           items:
+            $ref: "#/components/schemas/ProgrammeMeeting"
+      additionalProperties: true
+    ProgrammeMeeting:
+      type: object
+      description: One meeting, as returned by `getProgramme` (in `items`) and `editEveningParts`.
+      properties:
+        eveningid:
+          type: string
+          description: Meeting ID.
+        sectionid:
+          type: string
+        title:
+          type: string
+        notesforparents:
+          type: string
+          description: Notes shown to parents in the parent portal.
+        notesforhelpingparents:
+          type: string
+          nullable: true
+          description: Notes for parents on the helper rota.
+        parentsrequired:
+          type: string
+          description: Number of parent helpers needed, as a string.
+        prenotes:
+          type: string
+          description: Leader notes for the start of the meeting.
+        games:
+          type: string
+          description: Leader notes for games.
+        postnotes:
+          type: string
+          description: Leader notes for the end of the meeting.
+        leaders:
+          type: string
+          description: Free text, typically the leaders running the meeting.
+        meetingdate:
+          type: string
+          format: date
+        starttime:
+          type: string
+          example: "19:00:00"
+        endtime:
+          type: string
+          example: "20:45:00"
+        primary_leader_id:
+          type: string
+          description: ID of the leader in charge.
+        config:
+          type: object
+          properties:
+            has_badges:
+              type: boolean
+          additionalProperties: true
+        soft_deleted:
+          type: string
+          description: '"1" if the meeting has been deleted.'
+        help:
+          type: array
+          description: Parent helpers. Items include `scoutid` and `scout` (full name).
+          items:
+            type: object
+            additionalProperties: true
+        unavailableleaders:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        activities:
+          type: array
+          items:
             type: object
             additionalProperties: true
         badgelinks:
-          type: object
-          additionalProperties: true
+          type: array
+          description: Empty array when there are no links (PHP empty map).
+          items:
+            type: object
+            additionalProperties: true
+        seasonal_suggestions:
+          type: array
+          description: Activity ideas from OSM's shared activity library.
+          items:
+            type: object
+            additionalProperties: true
       additionalProperties: true
     ProgrammeParentRotaMembers:
       type: object

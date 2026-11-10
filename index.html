@@ -11,106 +11,304 @@
   <!-- Machine-readable versions of these docs -->
   <link rel="alternate" type="text/markdown" title="llms.txt" href="llms.txt" />
   <link rel="alternate" type="application/yaml" title="OpenAPI spec" href="openapi.yaml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;700;800;900&display=swap" rel="stylesheet" />
   <style>
+    /* Tokens and header/banner styles mirror the district website
+       (district-website/app/assets/css/tokens.css, AppHeader.vue, SiteBanner.vue). */
     :root {
       --purple: #7413dc;
-      --navy: #003982;
+      --purple-dark: #5f0fb4;
+      --purple-05: #f6effd;
+      --purple-40: #c7a1f1;
+      --navy: #003882;
+      --white: #ffffff;
+      --black: #000000;
+      --grey-200: #e4e4e7;
+      --grey-900: #131316;
+      --font-brand: "Nunito Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --wrap: 1320px;
+      --gutter: clamp(1.25rem, 0.5rem + 3vw, 2.5rem);
+      --ease: cubic-bezier(0.2, 0, 0, 1);
+      --dur-fast: 120ms;
+      --dur: 200ms;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
     }
 
     html,
     body {
       margin: 0;
       padding: 0;
-      background: #fff;
-      font-family: "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     }
 
-    .site-header {
-      background: #fff;
-      border-bottom: 4px solid var(--purple);
+    body {
+      background: var(--white);
+      color: var(--grey-900);
+      font-family: var(--font-brand);
     }
 
     .wrap {
-      max-width: 1536px;
-      margin: 0 auto;
-      padding: 0 20px;
-      box-sizing: border-box;
+      width: 100%;
+      max-width: var(--wrap);
+      margin-inline: auto;
+      padding-inline: var(--gutter);
     }
 
-    .site-header .wrap {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding-top: 10px;
-      padding-bottom: 10px;
-      flex-wrap: wrap;
+    :focus-visible {
+      outline: 3px solid var(--purple);
+      outline-offset: 2px;
     }
 
-    .site-header img {
-      height: 44px;
-      width: auto;
-    }
-
-    .brand p {
-      margin: 0;
-      color: var(--purple);
-    }
-
-    .brand .name {
+    .skip {
+      position: absolute;
+      left: -9999px;
+      top: 12px;
+      z-index: 10;
+      background: var(--black);
+      color: var(--white);
+      padding: 12px 16px;
       font-weight: 700;
     }
 
-    .brand .sub {
-      font-size: 14px;
+    .skip:focus {
+      left: 16px;
     }
 
-    .machine-links {
-      margin-left: auto;
+    /* ---- Header ---- */
+    .hdr {
+      background: var(--white);
+      border-bottom: 1px solid var(--grey-200);
+    }
+
+    .hdr__inner {
       display: flex;
-      gap: 8px;
+      align-items: center;
       flex-wrap: wrap;
-      font-size: 13px;
+      gap: 12px 24px;
+      min-height: 84px;
+      padding-block: 12px;
     }
 
-    .machine-links a {
-      color: var(--purple);
+    .hdr__brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 16px;
+      min-height: 44px;
+      color: var(--black);
       text-decoration: none;
-      border: 1px solid var(--purple);
-      border-radius: 999px;
-      padding: 4px 10px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      margin-inline-end: auto;
     }
 
-    .machine-links a:hover,
-    .machine-links a:focus-visible {
+    .lockup {
+      display: block;
+      width: 190px;
+      height: auto;
+    }
+
+    .lockup__name {
+      font-family: var(--font-brand);
+      font-weight: 800;
+      font-size: 28px;
+      letter-spacing: -0.01em;
+    }
+
+
+    .hdr__product {
+      color: var(--purple);
+      font-weight: 800;
+      font-size: 1rem;
+      line-height: 1;
+      white-space: nowrap;
+      padding-left: 14px;
+      border-left: 2px solid var(--purple-40);
+      padding-block: 4px;
+    }
+
+    .hdr__nav {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 4px 24px;
+    }
+
+    .hdr__link {
+      font-size: 1rem;
+      font-weight: 700;
+      color: inherit;
+      text-decoration: none;
+      padding-block: 8px;
+      border-bottom: 4px solid transparent;
+      white-space: nowrap;
+      transition: border-color var(--dur) var(--ease), color var(--dur) var(--ease);
+    }
+
+    .hdr__link:hover {
+      border-bottom-color: var(--purple-40);
+    }
+
+    .hdr__link[aria-current="page"] {
+      border-bottom-color: var(--purple);
+      color: var(--purple);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+      padding: 0.75rem 1.5rem;
+      border: 2px solid transparent;
+      border-radius: 0;
       background: var(--purple);
-      color: #fff;
+      color: var(--white);
+      font-weight: 700;
+      font-size: 1rem;
+      line-height: 1;
+      text-decoration: none;
+      white-space: nowrap;
+      transition: background-color var(--dur-fast) var(--ease);
     }
 
-    .disclaimer {
+    .btn:hover {
+      background: var(--purple-dark);
+    }
+
+    /* Below 960px the nav drops onto its own row under the logo and button. */
+    @media (max-width: 959px) {
+      .hdr__nav {
+        order: 3;
+        width: 100%;
+        gap: 4px 20px;
+      }
+    }
+
+    /* Phones: logo and button share a row, the nav sits on one row below, and the
+       banner tightens up, so the docs start well above the fold. */
+    @media (max-width: 600px) {
+      .hdr__inner {
+        min-height: 0;
+        gap: 2px 12px;
+        padding-block: 8px;
+      }
+
+      .lockup {
+        width: 108px;
+      }
+
+      .hdr__brand {
+        gap: 10px;
+        flex-basis: 100%;
+      }
+
+      .hdr__nav {
+        width: auto;
+      }
+
+      .hdr__link--wide {
+        display: none;
+      }
+
+      .btn {
+        order: 4;
+        margin-left: auto;
+      }
+
+      .hdr__product {
+        font-size: 0.875rem;
+        padding-left: 10px;
+      }
+
+      .hdr__nav {
+        gap: 0 18px;
+      }
+
+      .hdr__link {
+        font-size: 0.9375rem;
+      }
+
+      .hdr__link[aria-current="page"] {
+        display: none;
+      }
+
+      .btn {
+        min-height: 40px;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9375rem;
+        gap: 6px;
+      }
+
+      .btn__long {
+        display: none;
+      }
+
+      .banner {
+        font-size: 0.875rem;
+      }
+
+      .banner__inner {
+        padding-block: 8px;
+        gap: 0 12px;
+      }
+
+      .banner__text {
+        flex-basis: 100%;
+      }
+
+      .banner__link {
+        min-height: 36px;
+      }
+    }
+
+    /* ---- Notice banner (district SiteBanner, "info" style). Not yellow: that is reserved for safeguarding. ---- */
+    .banner {
       background: var(--navy);
-      color: rgba(255, 255, 255, .9);
-      font-size: 12px;
+      color: var(--white);
+      font-size: 1rem;
     }
 
-    .disclaimer p {
+    .banner__inner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 16px;
+      padding-block: 12px;
+    }
+
+    .banner__text {
       margin: 0;
-      padding: 4px 0;
+      line-height: 1.3;
+      flex: 1 1 32rem;
     }
 
-    .disclaimer a {
-      color: #fff;
+    .banner__text strong {
+      font-weight: 900;
+      margin-inline-end: 8px;
+    }
+
+    .banner__link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      font-weight: 900;
+      color: inherit;
     }
 
     #redoc-error {
-      padding: 24px 20px;
-      color: #b00020;
+      padding: 24px var(--gutter);
+      color: #d41c00;
     }
 
     @media print {
 
-      .site-header,
-      .disclaimer {
+      .hdr,
+      .banner {
         display: none;
       }
     }
@@ -118,32 +316,65 @@
 </head>
 
 <body>
-  <header class="site-header">
-    <div class="wrap">
-      <img src="https://newcastlescouts.org.uk/image/fleur-de-lis-72.png" alt="Scouts fleur-de-lis" width="44"
-        height="44" />
-      <div class="brand">
-        <p class="name">City of Newcastle Scouts</p>
-        <p class="sub">Open Source · OSM API Docs</p>
-      </div>
-      <nav class="machine-links" aria-label="Machine-readable docs">
-        <a href="llms.txt" title="Index for AI agents (llmstxt.org)">llms.txt</a>
-        <a href="llms-full.txt" title="Entire reference as one Markdown file">llms-full.txt</a>
-        <a href="openapi.yaml" title="OpenAPI 3 specification" download>openapi.yaml</a>
-        <a href="https://github.com/newcastlescouts/osm-api-docs" title="Source on GitHub">GitHub</a>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="hdr">
+    <div class="wrap hdr__inner">
+      <a class="hdr__brand" href="https://newcastlescouts.org.uk/" aria-label="City of Newcastle Scouts — back to the district website">
+        <svg
+        class="lockup"
+        viewBox="0 0 415.74667 188.97333"
+        role="img"
+        aria-label="City of Newcastle Scouts"
+        focusable="false"
+        >
+        <g
+        fill="currentColor"
+        fill-rule="nonzero"
+        transform="matrix(0.13333333,0,0,-0.13333333,0,188.97333)"
+        >
+        <path d="m 258.801,622.473 47.105,56.425 c 32.617,-26.914 66.789,-44.003 108.203,-44.003 32.621,0 52.297,12.949 52.297,34.16 v 1.035 c 0,20.215 -12.429,30.547 -73.008,46.094 -73.007,18.632 -120.117,38.828 -120.117,110.8 V 828 c 0,65.762 52.813,109.258 126.856,109.258 52.801,0 97.851,-16.57 134.621,-46.094 L 493.32,831.105 c -32.097,22.266 -63.672,35.723 -94.238,35.723 -30.527,0 -46.594,-13.965 -46.594,-31.562 v -1.055 c 0,-23.809 15.539,-31.582 78.196,-47.617 73.515,-19.16 114.921,-45.567 114.921,-108.731 v -1.035 c 0,-71.953 -54.875,-112.344 -133.046,-112.344 -54.883,0 -110.274,19.161 -153.758,57.989" />
+        <path d="m 575.352,706.848 v 1.054 c 0,79.2 60.578,144.434 145.476,144.434 52.317,0 84.926,-17.598 110.82,-46.582 l -48.152,-51.797 c -17.605,18.652 -35.207,30.566 -63.164,30.566 -39.355,0 -67.312,-34.707 -67.312,-75.585 v -1.036 c 0,-42.461 27.429,-76.64 70.41,-76.64 26.414,0 44.527,11.386 63.679,29.511 l 46.082,-46.601 C 806.27,584.68 775.215,563.449 719.805,563.449 c -83.36,0 -144.453,64.18 -144.453,143.399" />
+        <path d="m 1071.23,706.848 v 1.054 c 0,40.899 -29.51,76.621 -73,76.621 -45.039,0 -71.968,-34.707 -71.968,-75.585 v -1.036 c 0,-40.918 29.508,-76.64 72.996,-76.64 45.052,0 71.972,34.687 71.972,75.586 m -222.625,0 v 1.054 c 0,79.727 64.208,144.434 150.653,144.434 85.952,0 149.622,-63.672 149.622,-143.398 v -1.036 c 0,-79.746 -64.2,-144.453 -150.65,-144.453 -85.957,0 -149.625,63.672 -149.625,143.399" />
+        <path d="M 1179.59,667.512 V 847.16 h 78.7 V 692.355 c 0,-37.285 17.6,-56.425 47.63,-56.425 30.02,0 49.18,19.14 49.18,56.425 V 847.16 h 78.7 v -277.5 h -78.7 v 39.336 c -18.13,-23.281 -41.42,-44.512 -81.28,-44.512 -59.54,0 -94.23,39.336 -94.23,103.028" />
+        <path d="m 1479.52,648.352 v 269.746 h 78.69 V 847.16 h 65.26 v -67.305 h -65.26 V 661.301 c 0,-18.125 7.78,-26.934 25.37,-26.934 14.49,0 27.44,3.633 38.83,9.844 v -63.164 c -16.56,-9.844 -35.71,-16.055 -62.13,-16.055 -48.14,0 -80.76,19.16 -80.76,83.36" />
+        <path d="m 1658.12,606.418 33.66,51.777 c 30.02,-21.757 61.6,-33.144 87.48,-33.144 22.78,0 33.14,8.281 33.14,20.703 v 1.035 c 0,17.109 -26.92,22.793 -57.48,32.109 -38.82,11.387 -82.82,29.512 -82.82,83.36 v 1.035 c 0,56.426 45.56,88.008 101.47,88.008 35.21,0 73.51,-11.895 103.56,-32.09 l -30.05,-54.375 c -27.42,16.055 -54.87,25.898 -75.07,25.898 -19.16,0 -28.98,-8.3 -28.98,-19.16 v -1.035 c 0,-15.527 26.4,-22.793 56.41,-33.144 38.84,-12.95 83.89,-31.582 83.89,-82.305 v -1.035 c 0,-61.621 -46.08,-89.571 -106.12,-89.571 -38.84,0 -82.34,12.93 -119.09,41.934" />
+        <path d="m 2264.67,864.504 c 22.45,-34.414 33.76,-73.789 37.3,-100.488 h 40.99 c -3.43,32.636 -16.61,80.449 -44.18,122.734 -32.8,50.289 -75.51,76.895 -123.5,76.93 h -0.29 c -36.6,0 -70.86,-16.453 -94.01,-45.141 -24.32,-30.168 -33.53,-69.172 -25.27,-107.023 l 39.78,8.691 c -5.55,25.352 0.88,52.559 17.18,72.773 15.62,19.329 37.73,29.977 62.33,29.977 h 0.21 c 42.46,-0.027 72.08,-31.793 89.46,-58.453" />
+        <path d="m 2560.56,579.27 c -15.93,22.05 -27.55,48.457 -32.69,73.867 h -41.36 c 3.18,-19.844 11.62,-52.578 33.81,-87.129 -13.91,-23.281 -38.88,-46.27 -65.28,-60.02 -0.02,0 -0.03,0 -0.05,0.02 -0.01,-0.02 -0.03,-0.02 -0.04,-0.02 -26.41,13.75 -51.38,36.739 -65.29,60.02 22.21,34.551 30.62,67.285 33.8,87.129 h -41.37 c -5.12,-25.41 -16.74,-51.817 -32.67,-73.867 l -6.93,-9.61 4.94,-10.781 c 17.29,-37.715 57.2,-75.527 99.32,-94.102 l 8.18,-3.613 h 0.06 0.05 l 8.18,3.613 c 42.12,18.575 82.03,56.387 99.32,94.102 l 4.94,10.781 -6.92,9.61" />
+        <path d="m 2645.3,864.504 c -22.45,-34.414 -33.76,-73.789 -37.28,-100.488 h -41 c 3.43,32.636 16.6,80.449 44.18,122.734 32.79,50.289 75.5,76.895 123.5,76.93 h 0.29 c 36.59,0 70.84,-16.453 93.99,-45.141 24.33,-30.168 33.54,-69.172 25.27,-107.023 l -39.77,8.691 c 5.54,25.352 -0.88,52.559 -17.17,72.773 -15.63,19.329 -37.73,29.977 -62.34,29.977 h -0.2 c -42.47,-0.027 -72.08,-31.793 -89.47,-58.453" />
+        <path d="m 2383.84,764.016 h 40.99 c -5.11,47.226 -23.64,88.379 -40.05,124.824 -16.41,36.367 -31.88,70.738 -31.66,104.98 0.34,39.38 22.79,79.52 60.07,107.43 6.53,4.92 25.11,19.18 41.8,34.5 16.68,-15.32 35.25,-29.58 41.79,-34.5 37.28,-27.91 59.73,-68.05 60.08,-107.43 0.21,-34.242 -15.26,-68.613 -31.65,-104.98 -16.42,-36.445 -34.95,-77.598 -40.07,-124.824 h 40.99 c 5.07,38.984 20.89,74.082 36.2,108.105 18.27,40.527 35.51,78.82 35.25,122.008 -0.47,52.051 -29.02,104.251 -76.38,139.681 -5.58,4.23 -34.63,26.37 -51.32,44.35 l -14.89,16.06 -14.88,-16.06 c -16.71,-17.98 -45.76,-40.12 -51.35,-44.35 -47.34,-35.43 -75.89,-87.63 -76.36,-139.681 -0.27,-43.188 16.98,-81.481 35.23,-122.008 15.33,-34.023 31.14,-69.121 36.21,-108.105" />
+        <path d="m 2222.43,689.055 h 465.11 v 39.023 h -465.11 v -39.023" />
+        </g>
+        <text class="lockup__name" x="33.253067" y="151.1436" fill="currentColor">City of Newcastle</text>
+        </svg>
+        <span class="hdr__product">OSM API Docs</span>
+      </a>
+
+      <nav class="hdr__nav" aria-label="Docs">
+        <a class="hdr__link" href="./" aria-current="page">Reference</a>
+        <a class="hdr__link" href="llms.txt" title="Index for AI agents (llmstxt.org)">llms.txt</a>
+        <a class="hdr__link" href="openapi.yaml" title="OpenAPI 3 specification" download>openapi.yaml</a>
+        <a class="hdr__link hdr__link--wide" href="https://github.com/newcastlescouts/osm-api-docs">GitHub</a>
       </nav>
+
+      <a class="btn" href="https://newcastlescouts.org.uk/"><span aria-hidden="true">&larr;</span><span>District<span class="btn__long"> website</span></span></a>
     </div>
   </header>
-  <div class="disclaimer">
-    <div class="wrap">
-      <p>
-        While every effort has been made to ensure these routes are accurate and up-to-date, we cannot guarantee the
-        reliability, performance or validity of OSM's API. This document serves for reference purposes only.
+
+  <div class="banner" role="region" aria-label="Accuracy notice">
+    <div class="wrap banner__inner">
+      <p class="banner__text">
+        <strong>Unofficial reference.</strong>
+        Reverse-engineered from observed traffic, so OSM may change things without notice. Always test against the live API.
       </p>
+      <a class="banner__link" href="https://github.com/newcastlescouts/osm-api-docs/issues">Report a problem <span
+          aria-hidden="true">&nbsp;&rarr;</span></a>
     </div>
   </div>
 
-  <div id="redoc"></div>
+  <main id="main">
+    <div id="redoc"></div>
+  </main>
 
   <!-- Pinned to Redoc 2.x: Redoc 3 ships an ES-module bundle that breaks as a classic <script>. -->
   <script src="https://cdn.jsdelivr.net/npm/redoc@2.5.4/bundles/redoc.standalone.js"></script>
@@ -155,15 +386,19 @@
         el.innerHTML = 'The interactive viewer failed to load. The raw spec is at <a href="openapi.yaml">openapi.yaml</a>.';
         return;
       }
+      var font = "\"Nunito Sans\", system-ui, -apple-system, \"Segoe UI\", sans-serif";
       Redoc.init("openapi.yaml", {
-        hideDownloadButton: false,
         expandResponses: "200",
         jsonSampleExpandLevel: 2,
-        sortTagsAlphabetically: false,
         theme: {
-          colors: { primary: { main: "#7413dc" } },
-          typography: { fontFamily: "\"Nunito Sans\", system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif" },
-          sidebar: { activeTextColor: "#7413dc" }
+          colors: { primary: { main: "#7413dc" }, text: { primary: "#131316" } },
+          typography: {
+            fontFamily: font,
+            headings: { fontFamily: font, fontWeight: "800" },
+            links: { color: "#7413dc", visited: "#7413dc", hover: "#5f0fb4" }
+          },
+          sidebar: { activeTextColor: "#7413dc", backgroundColor: "#f6effd" },
+          rightPanel: { backgroundColor: "#131316" }
         }
       }, el, function (err) {
         if (err) {

@@ -5,40 +5,174 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>OSM API Docs</title>
-  <link rel="icon" href="https://patrolplanner.newcastlescouts.org.uk/favicon.ico" />
+  <meta name="description"
+    content="Unofficial, community-maintained OpenAPI reference for the Online Scout Manager (OSM) API." />
+  <link rel="icon" href="https://newcastlescouts.org.uk/favicon.ico" />
+  <!-- Machine-readable versions of these docs -->
+  <link rel="alternate" type="text/markdown" title="llms.txt" href="llms.txt" />
+  <link rel="alternate" type="application/yaml" title="OpenAPI spec" href="openapi.yaml" />
   <style>
+    :root {
+      --purple: #7413dc;
+      --navy: #003982;
+    }
+
     html,
     body {
       margin: 0;
       padding: 0;
-      height: 100%;
+      background: #fff;
+      font-family: "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+
+    .site-header {
+      background: #fff;
+      border-bottom: 4px solid var(--purple);
+    }
+
+    .wrap {
+      max-width: 1536px;
+      margin: 0 auto;
+      padding: 0 20px;
+      box-sizing: border-box;
+    }
+
+    .site-header .wrap {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding-top: 10px;
+      padding-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .site-header img {
+      height: 44px;
+      width: auto;
+    }
+
+    .brand p {
+      margin: 0;
+      color: var(--purple);
+    }
+
+    .brand .name {
+      font-weight: 700;
+    }
+
+    .brand .sub {
+      font-size: 14px;
+    }
+
+    .machine-links {
+      margin-left: auto;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      font-size: 13px;
+    }
+
+    .machine-links a {
+      color: var(--purple);
+      text-decoration: none;
+      border: 1px solid var(--purple);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    .machine-links a:hover,
+    .machine-links a:focus-visible {
+      background: var(--purple);
+      color: #fff;
+    }
+
+    .disclaimer {
+      background: var(--navy);
+      color: rgba(255, 255, 255, .9);
+      font-size: 12px;
+    }
+
+    .disclaimer p {
+      margin: 0;
+      padding: 4px 0;
+    }
+
+    .disclaimer a {
+      color: #fff;
+    }
+
+    #redoc-error {
+      padding: 24px 20px;
+      color: #b00020;
+    }
+
+    @media print {
+
+      .site-header,
+      .disclaimer {
+        display: none;
+      }
     }
   </style>
 </head>
 
 <body>
-  <header class="bg-[#7413dc] p-3 print:hidden">
-    <div class="max-w-screen-2xl px-5 mx-auto flex items-center gap-5"><img
-        src="https://patrolplanner.newcastlescouts.org.uk/assets/fleur-de-lis-1d081019.png" alt="Fleur de Lis"
-        class="h-10">
-      <div>
-        <p class="font-semibold text-white">City of Newcastle Scouts</p>
-        <p class="text-sm text-white">Open Source</p>
+  <header class="site-header">
+    <div class="wrap">
+      <img src="https://newcastlescouts.org.uk/image/fleur-de-lis-72.png" alt="Scouts fleur-de-lis" width="44"
+        height="44" />
+      <div class="brand">
+        <p class="name">City of Newcastle Scouts</p>
+        <p class="sub">Open Source · OSM API Docs</p>
       </div>
+      <nav class="machine-links" aria-label="Machine-readable docs">
+        <a href="llms.txt" title="Index for AI agents (llmstxt.org)">llms.txt</a>
+        <a href="llms-full.txt" title="Entire reference as one Markdown file">llms-full.txt</a>
+        <a href="openapi.yaml" title="OpenAPI 3 specification" download>openapi.yaml</a>
+        <a href="https://github.com/newcastlescouts/osm-api-docs" title="Source on GitHub">GitHub</a>
+      </nav>
     </div>
   </header>
-  <div class="bg-[#003982] text-white/90 py-1">
-    <div class="max-w-screen-2xl px-5 mx-auto w-full text-xs">
+  <div class="disclaimer">
+    <div class="wrap">
       <p>
-        While every effort has been made to ensure these routes are accurate and up-to-date, we cannot guarantee the reliability, performance
-        or validity of OSM's API. This document serves for reference purposes only.
+        While every effort has been made to ensure these routes are accurate and up-to-date, we cannot guarantee the
+        reliability, performance or validity of OSM's API. This document serves for reference purposes only.
       </p>
     </div>
   </div>
-  <redoc spec-url="openapi.yaml"></redoc>
-  <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"> </script>
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-  </head>
+
+  <div id="redoc"></div>
+
+  <!-- Pinned to Redoc 2.x: Redoc 3 ships an ES-module bundle that breaks as a classic <script>. -->
+  <script src="https://cdn.jsdelivr.net/npm/redoc@2.5.4/bundles/redoc.standalone.js"></script>
+  <script>
+    (function () {
+      var el = document.getElementById("redoc");
+      if (!window.Redoc) {
+        el.id = "redoc-error";
+        el.innerHTML = 'The interactive viewer failed to load. The raw spec is at <a href="openapi.yaml">openapi.yaml</a>.';
+        return;
+      }
+      Redoc.init("openapi.yaml", {
+        hideDownloadButton: false,
+        expandResponses: "200",
+        jsonSampleExpandLevel: 2,
+        sortTagsAlphabetically: false,
+        theme: {
+          colors: { primary: { main: "#7413dc" } },
+          typography: { fontFamily: "\"Nunito Sans\", system-ui, -apple-system, \"Segoe UI\", Roboto, sans-serif" },
+          sidebar: { activeTextColor: "#7413dc" }
+        }
+      }, el, function (err) {
+        if (err) {
+          el.id = "redoc-error";
+          el.textContent = "Failed to render the spec: " + err;
+        }
+      });
+    })();
+  </script>
 </body>
 
 </html>

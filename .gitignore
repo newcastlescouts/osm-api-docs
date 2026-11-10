@@ -1,0 +1,4 @@
+node_modules/
+
+# Captured traffic contains real personal data. Never commit it.
+*.har

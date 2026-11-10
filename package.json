@@ -1,0 +1,14 @@
+{
+  "name": "osm-api-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-llms.mjs",
+    "lint": "redocly lint openapi.yaml --config redocly.yaml",
+    "check": "npm run lint && npm run build"
+  },
+  "devDependencies": {
+    "@redocly/cli": "2.40.0",
+    "yaml": "2.9.1"
+  }
+}

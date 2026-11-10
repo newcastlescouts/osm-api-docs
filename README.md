@@ -15,7 +15,7 @@ leaders run their sections.
 
 ## What's covered
 
-The spec documents **71 endpoints** (77 operations) across 14 categories, with request/response examples and schemas:
+The spec documents **80 endpoints** (88 operations) across 14 categories, with request/response examples and schemas:
 
 | Category             | Endpoints                                                                                                                                                                                                                                                       | What you can do                                                                                                                               |
 |----------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------|
@@ -25,25 +25,36 @@ The spec documents **71 endpoints** (77 operations) across 14 categories, with r
 | **Attendance**       | `/ext/members/attendance/`, `/v3/members/attendance/visitors/...`                                                                                                                                                                                               | Register data and layout, mark attendance, visitors, meeting badge requirements                                                               |
 | **Custom Data**      | `/ext/customdata/`                                                                                                                                                                                                                                              | Read and update custom fields (contacts, consents, gender, etc.)                                                                              |
 | **Email**            | `/ext/members/email/`, `/ext/members/email/campaigns/`, `/ext/settings/emails/`, `/ext/members/sms/`, `/v3/members/email/...`                                                                                                                                    | Resolve recipients, compose/draft/send, campaign templates, delivery reports                                                                  |
-| **Programme**        | `/ext/programme/`, `/ext/programme/activities/`, `/ext/recipes/`, `/v3/programme/.../bookings`, `/v3/todo/tasks/meeting/...`                                                                                                                                     | Meeting summaries and details, activity library, recipes, parent bookings, meeting to-dos                                                    |
+| **Programme**        | `/ext/programme/`, `/ext/programme/activities/`, `/ext/recipes/`, `/v3/programme/.../bookings`, `/v3/todo/...`                                                                                                                                                      | Meeting summaries and details, activity library, recipes, parent bookings, meeting to-dos and projects                                       |
 | **Events**           | `/ext/events/summary/`, `/v3/events/event/...`, `/v3/kit/...`                                                                                                                                                                                                   | Event lists, details, attendance, payments, Parent Portal settings, timetable, kit lists                                                     |
-| **Finance**          | `/v3/finances/accounting/...`, `/ext/finances/invoices/summary/`                                                                                                                                                                                                | Cashbook, bank accounts and imports, budgets, annual report, expense cards, tracked items                                                    |
+| **Finance**          | `/v3/finances/accounting/...`, `/v3/comments/accounting/...`, `/ext/finances/onlinepayments/...`, `/ext/finances/invoices/summary/`                                                                                                                              | Cashbook, categories, bank accounts and imports, budgets, annual report, expense cards, tracked items, Online Payments, comments            |
 | **Files**            | `.../uploads/`, `.../leader_resources/`, `.../attachments/files/` (`action=manifest`)                                                                                                                                                                           | Shared file-attachment manifest pattern                                                                                                       |
 | **Dashboard**        | `/ext/dashboard/`                                                                                                                                                                                                                                               | Dashboard summaries (now loadable in `parts`)                                                                                                 |
-| **Risk Assessments** | `/v3/risk_assessments/.../categories`, `/ext/risk_assessments/`                                                                                                                                                                                                 | Risk assessment categories and meeting hazards                                                                                                |
-| **Generic / User**   | `/ext/generic/locks/`, `/ext/generic/featureusage/`, `/ext/users/...`, `/ext/settings/accountpreferences/`, `/v3/menu-preferences/...`, `/v3/favourites/...`                                                                                                     | Edit locks, keep-alive ping, default section, menu preferences                                                                                |
+| **Risk Assessments** | `/v3/risk_assessments/...`, `/ext/risk_assessments/`                                                                                                                                                                                                            | Risk assessment categories, review schedule and meeting hazards                                                                               |
+| **Generic / User**   | `/ext/generic/locks/`, `/ext/generic/featureusage/`, `/ext/users/...`, `/ext/settings/accountpreferences/`, `/v3/menu-preferences/...`, `/v3/favourites/...`                                                                                                     | Edit locks, keep-alive ping, default section, menu preferences, notifications                                                                 |
 
 ## Contents
 
-| File           | Description                                          |
-|----------------|------------------------------------------------------|
-| `openapi.yaml` | OpenAPI 3.0.3 specification — the source of truth    |
-| `index.html`   | Interactive docs UI (Redoc) — just open in a browser |
+| File                     | Description                                                              |
+|--------------------------|--------------------------------------------------------------------------|
+| `openapi.yaml`           | OpenAPI 3.0.3 specification. The source of truth, edited by hand         |
+| `index.html`             | Interactive docs UI (Redoc), served over HTTP                            |
+| `llms.txt`               | Index for AI agents ([llmstxt.org](https://llmstxt.org)). Generated      |
+| `llms/<category>.md`     | One Markdown reference per category. Generated                           |
+| `llms-full.txt`          | The whole reference in one Markdown file. Generated                      |
+| `scripts/build-llms.mjs` | Builds the three generated outputs from `openapi.yaml`                   |
+| `AGENTS.md`              | How AI agents (and people) should work on this repo                      |
 
 ## Viewing the docs
 
-Open `index.html` in any browser. It loads `openapi.yaml` into [Redoc](https://github.com/Redocly/redoc) for a
-searchable, nicely formatted reference with request/response examples.
+Browse them at **https://opensource.newcastlescouts.org.uk**. Locally, serve the folder over HTTP (for example
+`npx http-server .`) rather than opening `index.html` from disk, because browsers block the spec fetch on `file://`.
+
+### With an AI assistant
+
+Point your coding agent at **https://opensource.newcastlescouts.org.uk/llms.txt**. It summarises the rules that matter
+(form-encoded POSTs, rate limits, the `action` parameter) and links to one Markdown file per category, so the agent
+only loads what it needs. `llms-full.txt` has everything in one file if your tool prefers that.
 
 You can also import `openapi.yaml` into tools like [Swagger Editor](https://editor.swagger.io/), Postman, or Insomnia.
 
@@ -72,21 +83,23 @@ You can also import `openapi.yaml` into tools like [Swagger Editor](https://edit
 PRs are welcome — especially for endpoints not yet documented. If you've observed a new endpoint or spotted a mistake:
 
 1. Add or update the relevant path in `openapi.yaml`
-2. Include realistic but **fictional** example data (no real names, IDs, or section data)
+2. Include realistic but **fictional** example data (no real names, IDs, or section data). Never commit HAR files
 3. Note any quirks in the description (unusual response formats, required-but-undocumented params, etc.)
+4. Run `npm install` once, then `npm run check` to lint and regenerate the `llms*` files, and commit them too
+
+See [`AGENTS.md`](AGENTS.md) for the full conventions, including how to mine HAR captures safely.
 
 ### Validating the OpenAPI spec
 
-This repo uses [Redocly CLI](https://redocly.com/docs/cli/) to lint `openapi.yaml` and make sure it bundles cleanly.
-Config lives in `redocly.yaml`. To run it locally:
+This repo uses [Redocly CLI](https://redocly.com/docs/cli/) to lint `openapi.yaml` (config in `redocly.yaml`):
 
 ```bash
-npx @redocly/cli@2.40.0 lint openapi.yaml
-npx @redocly/cli@2.40.0 bundle openapi.yaml > /dev/null
+npm install
+npm run check   # lint + regenerate llms.txt, llms-full.txt and llms/
 ```
 
-GitHub Actions runs the same two commands automatically on pull requests and pushes to `main` that touch
-`openapi.yaml` or `redocly.yaml` (see `.github/workflows/validate-openapi.yml`), so any issues will also be caught in CI.
+GitHub Actions (`.github/workflows/validate-openapi.yml`) lints and bundles the spec on every pull request and push to
+`main`, and fails if the generated `llms*` files weren't regenerated after a spec change.
 
 ## Licence
 

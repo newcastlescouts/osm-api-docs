@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Online Scout Manager API (Unofficial)
-  version: 0.3.0
+  version: 0.4.0
   description: |
     Unofficial, community-driven OpenAPI specification for the
     [Online Scout Manager](https://www.onlinescoutmanager.co.uk) (OSM) API —
@@ -130,7 +130,7 @@ tags:
   - name: Generic
     description: Cross-cutting helpers (edit locks, telemetry).
   - name: User
-    description: Session keep-alive and per-user preferences.
+    description: Session keep-alive, per-user preferences, and notifications.
 paths:
   /ext/generic/startup/:
     get:
@@ -5116,6 +5116,221 @@ paths:
                       created_at: "2023-11-29 16:23:01"
                       updated_at: "2025-10-08 01:35:57"
                 meta: [ ]
+  /v3/finances/accounting/categories/section/{sectionid}:
+    get:
+      summary: List accounting categories
+      tags:
+        - Finance
+      description: |
+        Income and expense categories used to classify cashbook transactions
+        and budget lines. Each has a `type` (`income` or `expense`) and an
+        `icon` name. Soft-deleted categories carry a `deleted_at` timestamp;
+        `meta.has_deleted_categories` says whether any exist.
+      parameters:
+        - $ref: "#/components/parameters/SectionIdPath"
+      responses:
+        "200":
+          description: Categories.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  - id: 81001
+                    section_id: 45001
+                    name: "Activities"
+                    type: "expense"
+                    icon: "activity"
+                    created_at: "2023-09-01 19:00:00"
+                    updated_at: "2023-09-01 19:00:00"
+                    deleted_at: null
+                    visibilities: [ ]
+                  - id: 81002
+                    section_id: 45001
+                    name: "Subscriptions"
+                    type: "income"
+                    icon: "money"
+                    created_at: "2023-09-01 19:00:00"
+                    updated_at: "2023-09-01 19:00:00"
+                    deleted_at: null
+                    visibilities: [ ]
+                meta:
+                  has_deleted_categories: false
+  /v3/finances/accounting/{sectionid}/existing_group_accounts:
+    get:
+      summary: List the group's existing accounts
+      tags:
+        - Finance
+      description: |
+        Bank accounts that already exist elsewhere in the section's group,
+        split into `expense` (expense-card accounts) and `standard` accounts.
+        Used when linking a section to an account instead of creating a new one.
+      parameters:
+        - $ref: "#/components/parameters/SectionIdPath"
+      responses:
+        "200":
+          description: Existing accounts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  expense:
+                    - id: 82001
+                      name: "Group Expense Account"
+                  standard: [ ]
+                meta:
+                  has_visible_categories: true
+  /v3/comments/accounting/{sectionid}/list:
+    get:
+      summary: List accounting comments
+      tags:
+        - Finance
+      description: |
+        Comment thread for the section's accounts. `meta` holds the current
+        user's comment permissions (`can_add`, `can_edit_self`,
+        `can_delete_others`, …) and `notification_topics`, keyed by topic
+        (e.g. `comments/accounting/45001`), which describes how the client
+        opens the thread from a notification. The path segment is the section
+        ID, but `section_id` is also required in the query string. Only an
+        empty `data` list has been observed.
+      parameters:
+        - $ref: "#/components/parameters/SectionIdPath"
+        - name: section_id
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Comments and permissions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data: [ ]
+                meta:
+                  can_edit_self: true
+                  can_edit_others: false
+                  can_delete_self: true
+                  can_delete_others: false
+                  can_add: true
+                  notification_topics:
+                    comments/accounting/45001:
+                      label: "Accounts"
+                      section_id: 45001
+                      permission_type: "finance"
+                      permission_value: "10"
+                      specified_section_id: 45001
+                      javascript_data:
+                        require: "accounting"
+                        execute: "open"
+                        args: [ "comments" ]
+                        params:
+                          id: "45001"
+                          react: "Accounting"
+                          props:
+                            selected_tab: "comments"
+                  has_uploads: false
+  /ext/finances/onlinepayments/:
+    get:
+      summary: Get Online Payments schemes
+      tags:
+        - Finance
+      description: |
+        Online Payments schemes for the section, with the linked
+        `bank_accounts` and a `config` block describing the section's
+        subscription (`subscription_level`, `subscription_active`, expiry
+        dates) and paid add-ons (`portal`, `portalExpires`). `items` is empty
+        when no schemes are set up; populated items have not been observed.
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ getSchemes ]
+        - name: sectionid
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Schemes and subscription config.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+              example:
+                identifier: "schemeid"
+                label: "Payment schemes"
+                has_accounts: false
+                items: [ ]
+                bank_accounts: [ ]
+                config:
+                  subscription_level: 3
+                  subscription_expires: "2026-09-01"
+                  sectionType: "cubs"
+                  section_type: "cubs"
+                  parentSectionId: "44001"
+                  hierarchy_lowest_level: true
+                  hierarchy_operating_level: "section"
+                  config_subscriptions_checked: "2026-11-01 09:00:00"
+                  subscription_active: true
+                  has_expense_account: true
+                  portal:
+                    expense_cards_fees: 1
+                    accounts: 1
+                    filestorage: 1
+                  portalExpires:
+                    accountsA: 1
+                    accounts: "2026-09-01"
+                    filestorage: "2026-09-01"
+                    filestorageA: 1
+  /ext/finances/onlinepayments/merchants/:
+    get:
+      summary: Get Online Payments merchant summary
+      tags:
+        - Finance
+      description: Payment-provider merchant accounts linked to the section. `items` is empty when none are connected; populated items have not been observed.
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ getSummary ]
+        - name: sectionid
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Merchant summary.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+              example:
+                items: [ ]
   /v3/finances/accounting/expense_cardholders/section/{sectionid}:
     get:
       summary: List expense cardholders
@@ -5360,6 +5575,175 @@ paths:
             type: string
             enum: [ "true", "false" ]
         - name: bank_account_transaction_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/FileManifest"
+    post:
+      summary: Cashbook receipt attachments manifest (POST)
+      tags:
+        - Files
+      description: |
+        The web client also fetches the cashbook manifest with a POST. All
+        parameters, including `action=manifest`, are in the query string and
+        there is no body. The response matches the GET form.
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ manifest ]
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Transaction ID, or the `attachments_id` GUID when `temp=true`.
+        - name: section_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: temp
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ "true", "false" ]
+        - name: bank_account_transaction_id
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          $ref: "#/components/responses/FileManifest"
+  /ext/finances/accounting/financial_year/cashbook/transactions/uploads/index.php:
+    get:
+      summary: Preview a cashbook receipt
+      tags:
+        - Files
+      description: |
+        Image preview of an attached file, served as `image/png` (or the format
+        in `fm`). Use the `preview` URLs from the manifest
+        (`data.manifest[*].preview` / `preview_sizes`) as they are: `s` is a
+        server-generated signature over the other parameters, so changing
+        `w`, `h` or `fit` yourself will not work. Other features' `uploads/`
+        endpoints follow the same pattern.
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ preview ]
+        - name: file
+          in: query
+          required: true
+          schema:
+            type: string
+          description: File path within the manifest.
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Transaction ID.
+        - name: bank_account_transaction_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: section_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: cb
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Cache-buster.
+        - name: _bypass_service_worker
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [ "1" ]
+        - name: fm
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Output format (observed `png`).
+        - name: fit
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Resize mode (observed `crop`).
+        - name: w
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: h
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: s
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Signature generated by OSM; copy it from the manifest.
+      responses:
+        "200":
+          description: Preview image.
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+  /ext/finances/accounting/bank_accounts/uploads/:
+    get:
+      summary: Bank account attachments manifest
+      tags:
+        - Files
+      description: |
+        File manifest for documents attached to a bank account (e.g.
+        statements). `manifest` is an empty array when there are no files.
+        See [Files](#tag/Files).
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ manifest ]
+        - name: id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Bank account ID.
+        - name: section_id
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: path
           in: query
           required: false
           schema:
@@ -5974,6 +6358,33 @@ paths:
                   location: null
                   bookings: [ ]
                 meta: [ ]
+  /v3/todo/projects/{sectionId}:
+    get:
+      summary: List to-do projects
+      tags:
+        - Programme
+      description: |
+        To-do projects (groups of tasks) for the section. Only an empty list
+        has been observed, so the item shape is unknown.
+      parameters:
+        - name: sectionId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Section ID.
+      responses:
+        "200":
+          description: Projects.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data: [ ]
+                meta: [ ]
   /v3/todo/tasks/meeting/{eveningId}:
     get:
       summary: Get to-do tasks for a meeting
@@ -6159,6 +6570,48 @@ paths:
                         number_reviews: 0
                     my_cost_per_person: 0.35
                 meta: [ ]
+  /v3/risk_assessments/reviews/{sectionId}:
+    get:
+      summary: List risk assessment review status
+      tags:
+        - Risk Assessments
+      description: |
+        Review schedule for the section's risk assessments. Each entry gives
+        when it was last reviewed and by whom, `next_review_on`,
+        `days_until_due` (negative when overdue) and `status` (observed
+        `overdue`). `type` is the kind of thing assessed (observed `programme`)
+        and `associated_id` its ID. `is_implicit` appears to mark entries OSM
+        created automatically. `meta.review_months` is the review interval.
+      parameters:
+        - name: sectionId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Section ID.
+      responses:
+        "200":
+          description: Review entries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  - reviewed_on: "2025-09-10"
+                    reviewed_by_name: "Alex Leader"
+                    next_review_on: "2026-09-10"
+                    status: "overdue"
+                    days_until_due: -61
+                    is_implicit: false
+                    type: "programme"
+                    associated_id: 45001
+                    title: "General meeting risk assessment"
+                    last_used_on: "2026-11-03"
+                meta:
+                  review_months: 12
   /ext/risk_assessments/:
     get:
       summary: Get a risk assessment
@@ -6442,7 +6895,82 @@ paths:
               example:
                 status: true
                 error: null
-                data: [ ]
+                data:
+                  - level: 2
+                    name: "SetRetentionSettings"
+                    title: "Review your data retention settings"
+                    hide_dismiss: false
+                    dismiss: "SetRetentionSettings-45001-0a1b2c3d4e5f60718293a4b5c6d7e8f9"
+                    dismiss_expires: "2026-11-17"
+                    view_component: false
+                    view_function: false
+                    view_args: [ ]
+                    view_constructor_args: { }
+                    use_slider: false
+                    video: false
+                    image: false
+                    data: [ "Set how long OSM keeps data about members who have left." ]
+                    skip_if_dialogs_shown: false
+                    actions:
+                      - label: "Open settings"
+                        component: "settings"
+                        view_function: "open"
+                        arguments: [ "retention" ]
+                        dismiss: "2026-11-17"
+                        colour: "blue"
+                        icon: "cog"
+                        size: "small"
+                meta: [ ]
+    post:
+      summary: Dismiss a notification
+      tags:
+        - User
+      description: |
+        Hides a notification until `expires`. `item` is the notification's
+        `dismiss` key from the GET response
+        (`<NotificationName>-<sectionId>-<hash>`). The response returns the
+        remaining `notifications`.
+      parameters:
+        - name: action
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ dismiss ]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [ section_id, item ]
+              properties:
+                section_id:
+                  type: string
+                item:
+                  type: string
+                  description: The notification's `dismiss` key.
+                expires:
+                  type: string
+                  format: date
+                  description: Date until which the notification stays hidden (observed one week ahead).
+            example:
+              section_id: "45001"
+              item: "SetRetentionSettings-45001-0a1b2c3d4e5f60718293a4b5c6d7e8f9"
+              expires: "2026-11-17"
+      responses:
+        "200":
+          description: Notification dismissed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/V3Envelope"
+              example:
+                status: true
+                error: null
+                data:
+                  hidden: true
+                  notifications: [ ]
                 meta: [ ]
   /ext/settings/accountpreferences/:
     post:

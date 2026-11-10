@@ -2,17 +2,9 @@ name: Validate OpenAPI
 
 on:
   pull_request:
-    paths:
-      - openapi.yaml
-      - redocly.yaml
-      - .github/workflows/validate-openapi.yml
   push:
     branches:
       - main
-    paths:
-      - openapi.yaml
-      - redocly.yaml
-      - .github/workflows/validate-openapi.yml
   workflow_dispatch:
 
 env:
@@ -29,9 +21,24 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Lint OpenAPI specification
-        run: npx --yes @redocly/cli@2.40.0 lint openapi.yaml --config redocly.yaml
+        run: npx redocly lint openapi.yaml --config redocly.yaml
 
       - name: Bundle OpenAPI specification
-        run: npx --yes @redocly/cli@2.40.0 bundle openapi.yaml --config redocly.yaml > /dev/null
+        run: npx redocly bundle openapi.yaml --config redocly.yaml > /dev/null
+
+      - name: Regenerate AI docs (llms.txt, llms-full.txt, llms/)
+        run: npm run build
+
+      - name: Fail if AI docs are out of date
+        run: |
+          if [ -n "$(git status --porcelain -- llms.txt llms-full.txt llms)" ]; then
+            git status --porcelain -- llms.txt llms-full.txt llms
+            echo "::error::Generated AI docs are stale. Run 'npm run build' and commit the result."
+            exit 1
+          fi

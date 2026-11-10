@@ -1,0 +1,38 @@
+# Online Scout Manager API (Unofficial)
+
+> Community-maintained, reverse-engineered reference for the Online Scout Manager (OSM) API: 80 paths, 88 operations. Not affiliated with OSM; behaviour may drift, so verify against the live API.
+
+Essentials before writing any code:
+- Base URL `https://www.onlinescoutmanager.co.uk`; OAuth 2.0 authorization-code flow, bearer token in `Authorization`.
+- Every POST body must be `application/x-www-form-urlencoded`. Sending JSON gets the OAuth client blocked.
+- Many URLs multiplex behaviour through an `action` query parameter; the action is part of the operation's identity.
+- Respect `X-RateLimit-*` headers and back off on HTTP 429 (`Retry-After`). Repeat offenders are permanently blocked.
+- `/v3/finances/accounting/` amounts are integer pence; event endpoints use pounds.
+- Responses contain personal data about young people. Do not log or retain more than needed.
+
+## Reference by category
+
+- [Startup](https://opensource.newcastlescouts.org.uk/llms/startup.md): Session bootstrap and general metadata. (1 operation)
+- [Members](https://opensource.newcastlescouts.org.uk/llms/members.md): Member lists, details, patrols, and census. (13 operations)
+- [Attendance](https://opensource.newcastlescouts.org.uk/llms/attendance.md): Member attendance and badge requirements. (3 operations)
+- [Custom Data](https://opensource.newcastlescouts.org.uk/llms/custom-data.md): Custom data groups and updates. (2 operations)
+- [Email](https://opensource.newcastlescouts.org.uk/llms/email.md): Member contact email selection and templates. (9 operations)
+- [Programme](https://opensource.newcastlescouts.org.uk/llms/programme.md): Programme summaries, meetings, and attachments. (7 operations)
+- [Badges](https://opensource.newcastlescouts.org.uk/llms/badges.md): Badge-related programme metadata. (3 operations)
+- [Dashboard](https://opensource.newcastlescouts.org.uk/llms/dashboard.md): Dashboard summaries and next things. (1 operation)
+- [Risk Assessments](https://opensource.newcastlescouts.org.uk/llms/risk-assessments.md): Programme and meeting risk assessments. (3 operations)
+- [Events](https://opensource.newcastlescouts.org.uk/llms/events.md): Events, event attendance and payments, Parent Portal settings, and kit lists. (10 operations)
+- [Finance](https://opensource.newcastlescouts.org.uk/llms/finance.md): Accounting (cashbook, bank accounts, budgets, reports), expense cards, and invoices. (20 operations)
+- [Files](https://opensource.newcastlescouts.org.uk/llms/files.md): Several features share a common file-attachment API. Each exposes a `manifest` action (sometimes namespaced, e.g. `emailerAttachmentsManifest` or `programmeAttachmentsManifest`) on its own URL, taking `id`, `path` (usually `/`), `section_id`, `temp`, plus a feature-specific ID. (8 operations)
+- [Generic](https://opensource.newcastlescouts.org.uk/llms/generic.md): Cross-cutting helpers (edit locks, telemetry). (2 operations)
+- [User](https://opensource.newcastlescouts.org.uk/llms/user.md): Session keep-alive, per-user preferences, and notifications. (6 operations)
+
+## Source
+
+- [openapi.yaml](https://opensource.newcastlescouts.org.uk/openapi.yaml): OpenAPI 3.0.3 spec, the source of truth (load into codegen, Postman, etc.)
+- [llms-full.txt](https://opensource.newcastlescouts.org.uk/llms-full.txt): all categories above in a single file
+- [Human docs](https://opensource.newcastlescouts.org.uk/): Redoc viewer
+
+## Optional
+
+- [Repository guide for agents](https://opensource.newcastlescouts.org.uk/AGENTS.md): how to add or correct endpoints in this repo
